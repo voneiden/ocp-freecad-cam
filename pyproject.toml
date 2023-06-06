@@ -1,0 +1,45 @@
+[build-system]
+requires = [
+    "setuptools>=45",
+    "setuptools_scm[toml]>=6.2",
+    "wheel",
+    "setuptools-git-versioning<2"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ocp-freecad-cam"
+authors = [
+    {name = "Matti Eiden", email = "snaipperi@gmail.com"},
+]
+description = "OCP FreeCAD CAM"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["cadquery", "viewer"]
+license = {text = "Apache License 2.0"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent"
+]
+dynamic = ["version"]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/voneiden/ocp-freecad-cam/issues/"
+"Documentation" = "https://github.com/voneiden/ocp-freecad-cam/"
+"Source Code" = "https://github.com/voneiden/ocp-freecad-cam/"
+
+[tool.setuptools-git-versioning]
+enabled = true
+dev_template = "{tag}.post{ccount}"
+
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+
+[tool.flake8]
+max-line-length = 100
+
+[tool.isort]
+profile = "black"
