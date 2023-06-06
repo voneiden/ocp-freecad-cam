@@ -25,7 +25,7 @@ import FreeCAD
 import Part
 import Path
 from Path.Main import Job as FCJob
-from Path.Op import MillFace
+from Path.Op import MillFace, Pocket
 from Path.Post.Command import buildPostList
 from Path.Post.Processor import PostProcessor
 
@@ -52,7 +52,6 @@ class Op(ABC):
         self.job = job
         self.n = len(self.job.ops) + 1
         self.name = name
-        self.job.ops.append(self)
 
     def execute(self, doc):
         raise NotImplemented
@@ -64,19 +63,33 @@ class Op(ABC):
         return f"{self.__class__.__name__}_{self.n}"
 
 
-class FaceOp(Op):
+class AreaOp(Op, ABC):
     def __init__(self, job: "Job", faces: FaceSource, *args, **kwargs):
         super().__init__(job, *args, **kwargs)
         self.op_brep = to_brep(shapes_to_compound(extract_faces(faces)))
+
+    def fc_op(self):
+        raise NotImplemented
 
     def execute(self, doc):
         fc_compound = Part.Compound()
         fc_compound.importBrepFromString(self.op_brep)
         feature = doc.addObject("Part::Feature", f"brep_{self.n}")
         feature.Shape = fc_compound
+        fc_op = self.fc_op()
+        fc_op.Proxy.execute(fc_op)
+
+
+class PocketOp(AreaOp):
+    def fc_op(self):
+        return Pocket.Create(self.label)
+
+
+class FaceOp(AreaOp):
+    def fc_op(self):
         fc_op = MillFace.Create(self.label)
         fc_op.BoundaryShape = "Stock"
-        fc_op.Proxy.execute(fc_op)
+        return fc_op
 
 
 class Job:
@@ -116,8 +129,17 @@ class Job:
                 gcode = processor.export(sublist, tmp.name, "--no-show-editor")
                 print("Got gcode", gcode)
 
+    def _add_op(self, op: Op):
+        self.ops.append(op)
+
+    def pocket(self, faces: FaceSource, *args, **kwargs) -> "Job":
+        op = PocketOp(self, faces, *args, **kwargs)
+        self._add_op(op)
+        return self
+
     def face(self, faces: FaceSource, *args, **kwargs) -> "Job":
-        FaceOp(self, faces, *args, **kwargs)
+        op = FaceOp(self, faces, *args, **kwargs)
+        self._add_op(op)
         return self
 
 
