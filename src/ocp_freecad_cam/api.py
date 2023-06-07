@@ -6,6 +6,10 @@ from typing import TypeAlias, Union
 
 from OCP.BRepTools import BRepTools
 from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Face, TopoDS_Shape
+from OCP.gp import gp_Trsf
+import logging
+logging.basicConfig()
+logging.getLogger().setLevel(logging.DEBUG)
 
 FC_PATH = "/home/voneiden/Downloads/freecad/squashfs-root/usr/lib"
 sys.path.append(FC_PATH)
@@ -25,9 +29,15 @@ import FreeCAD
 import Part
 import Path
 from Path.Main import Job as FCJob
-from Path.Op import MillFace, Pocket
+from Path.Op import MillFace, Pocket, PocketShape
 from Path.Post.Command import buildPostList
 from Path.Post.Processor import PostProcessor
+from ocp_freecad_cam.visualizer import visualize_fc_job
+import Path.Base.SetupSheet as PathSetupSheet
+import Path.Log as Log
+
+Log._useConsole = False
+Log._defaultLogLevel = Log.Level.DEBUG
 
 try:
     import cadquery as cq
@@ -66,28 +76,41 @@ class Op(ABC):
 class AreaOp(Op, ABC):
     def __init__(self, job: "Job", faces: FaceSource, *args, **kwargs):
         super().__init__(job, *args, **kwargs)
-        self.op_brep = to_brep(shapes_to_compound(extract_faces(faces)))
+        faces = extract_faces(faces)
+        transformed_faces = [forward_transform(job.top_plane, cq.Face(face)).wrapped for face in faces]
+        self.op_breps = [to_brep(face) for face in transformed_faces]
+
 
     def fc_op(self):
         raise NotImplemented
 
     def execute(self, doc):
-        fc_compound = Part.Compound()
-        fc_compound.importBrepFromString(self.op_brep)
-        feature = doc.addObject("Part::Feature", f"brep_{self.n}")
-        feature.Shape = fc_compound
+        op_features = []
+        for i, brep in enumerate(self.op_breps):
+            fc_compound = Part.Face()
+            fc_compound.importBrepFromString(brep)
+            feature = doc.addObject("Part::Feature", f"brep_{self.n}_{i}")
+            feature.Shape = fc_compound
+            op_features.append((feature, ("Face1",)))
         fc_op = self.fc_op()
+        fc_op.Base = op_features
         fc_op.Proxy.execute(fc_op)
 
 
 class PocketOp(AreaOp):
+    """ 2.5D pocket op """
     def fc_op(self):
-        return Pocket.Create(self.label)
+        name = self.label
+        PathSetupSheet.RegisterOperation(name, PocketShape.Create, PocketShape.SetupProperties)
+        return PocketShape.Create(name)
+
 
 
 class FaceOp(AreaOp):
     def fc_op(self):
-        fc_op = MillFace.Create(self.label)
+        name = self.label
+        PathSetupSheet.RegisterOperation(name, MillFace.Create, MillFace.SetupProperties)
+        fc_op = MillFace.Create(name)
         fc_op.BoundaryShape = "Stock"
         return fc_op
 
@@ -95,8 +118,13 @@ class FaceOp(AreaOp):
 class Job:
     def __init__(self, top_plane: PlaneSource, obj):
         self.top_plane = extract_plane(top_plane)
-        self.job_obj_brep = to_brep(obj.wrapped)  # todo quick hack
+        transformed_obj = forward_transform(self.top_plane, obj)
+        self.job_obj_brep = to_brep(transformed_obj.wrapped)  # todo quick hack
         self.ops: list[Op] = []
+        self.fc_job = None
+
+    def show(self):
+        return visualize_fc_job(self.fc_job, reverse_transform_tsrf(self.top_plane))
 
     def to_gcode(self):
         doc = FreeCAD.newDocument()
@@ -106,7 +134,10 @@ class Job:
         feature.Shape = fc_compound
 
         job = FCJob.Create("Job", [feature])
+        self.fc_job = job.Proxy
         job.PostProcessor = "grbl"
+        job.Stock.ExtZpos = 0
+        job.Stock.ExtZneg = 0
         job.Tools.Group[0].Tool.Diameter = 1
 
         for op in self.ops:
@@ -120,7 +151,7 @@ class Job:
         postlist = buildPostList(job)
         processor = PostProcessor.load(job.PostProcessor)
 
-        doc.saveAs("test.fcstd")
+        doc.saveAs("test2.fcstd")
         print(postlist)
 
         for idx, section in enumerate(postlist):
@@ -141,6 +172,17 @@ class Job:
         op = FaceOp(self, faces, *args, **kwargs)
         self._add_op(op)
         return self
+
+
+def create_job_transformations(top_plane):
+    """
+    Notes on transformation:
+
+    FreeCAD will place the job zero into the bounding box's top plane's
+    center.
+
+    Only thing that matters when sending BREP's to FreeCAD is the orientation
+    """
 
 
 def extract_plane(plane_source: PlaneSource) -> Plane:
@@ -178,6 +220,24 @@ def forward_transform(plane: Plane, shape):
 
     raise ValueError(f"Unknown type of plane: {type(plane)}")
 
+
+def reverse_transform(plane: Plane, shape):
+    if cq and isinstance(plane, cq.Plane):
+        return shape.transformShape(plane.rG)
+
+    elif b3d and isinstance(plane, b3d.Plane):
+        return plane.from_local_coords(shape)
+
+    raise ValueError(f"Unknown type of plane: {type(plane)}")
+
+def reverse_transform_tsrf(plane: Plane):
+    if cq and isinstance(plane, cq.Plane):
+        return plane.rG.wrapped.Trsf()
+
+    elif b3d and isinstance(plane, b3d.Plane):
+        return plane.reverse_transform.wrapped.Trsf()
+
+    raise ValueError(f"Unknown type of plane: {type(plane)}")
 
 def extract_faces(face_source: FaceSource) -> list[TopoDS_Face]:
     if isinstance(face_source, list):
