@@ -1,11 +1,16 @@
+import math
+import typing
 from abc import ABC
 from itertools import pairwise
+from typing import Optional
 
-from OCP.AIS import AIS_MultipleConnectedInteractive, AIS_Line
-from OCP.Geom import Geom_CartesianPoint
-from OCP.gp import gp_Trsf, gp_Vec
-from Path.Main import Job as FC_Job
-from Path.Base.MachineState import MachineState
+from OCP.AIS import AIS_Circle, AIS_Line, AIS_MultipleConnectedInteractive
+from OCP.Geom import Geom_CartesianPoint, Geom_Circle
+from OCP.GeomAPI import GeomAPI_ProjectPointOnCurve
+from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt, gp_Trsf, gp_Vec
+
+if typing.TYPE_CHECKING:
+    from Path.Main import Job as FC_Job
 
 
 class VisualCommand(ABC):
@@ -14,7 +19,7 @@ class VisualCommand(ABC):
         self.y = y
         self.z = z
 
-    def to_ais(self, start: 'VisualCommand'):
+    def to_ais(self, start: "VisualCommand"):
         raise NotImplemented
 
     def __eq__(self, other):
@@ -24,7 +29,7 @@ class VisualCommand(ABC):
 
 
 class LinearVisualCommand(VisualCommand):
-    def to_ais(self, start: 'VisualCommand'):
+    def to_ais(self, start: "VisualCommand"):
         if start == self:
             return None
         start_point = Geom_CartesianPoint(start.x, start.y, start.z)
@@ -32,33 +37,68 @@ class LinearVisualCommand(VisualCommand):
         # todo empty lines
         return AIS_Line(start_point, end_point)
 
+
 class RapidVisualCommand(LinearVisualCommand):
     pass
 
 
-class ArcVisualCommand(LinearVisualCommand):
-    def __init__(self, *, i, j, k, **kwargs):
+class ArcVisualCommand(LinearVisualCommand, ABC):
+    def __init__(self, *, i, j, k, arc_plane, **kwargs):
         super().__init__(**kwargs)
-
+        self.arc_plane = arc_plane
         self.i = i
         self.j = j
         self.k = k
 
+    def circle_normal_dir(self, circle_normal: gp_Vec):
+        raise NotImplemented
+
+    def to_ais(self, start: VisualCommand):
+        cx = start.x + self.i
+        cy = start.y + self.j
+        cz = start.z + self.k
+        radius = math.sqrt(self.i**2 + self.j**2 + self.k**2)
+        c = gp_Pnt(cx, cy, cz)
+        # XY
+        arc_plane = gp_Vec(*self.arc_plane)
+        cv = gp_Vec(self.i, self.j, self.k)
+        forward = cv.Crossed(arc_plane)
+        circle_normal = cv.Crossed(forward)
+        print("CNZ", circle_normal.Z())
+        circle_normal_dir = self.circle_normal_dir(circle_normal)
+
+        forward_dir = gp_Dir(forward.X(), forward.Y(), forward.Z())
+        circle_ax = gp_Ax2(c, circle_normal_dir, forward_dir)
+        geom_circle = Geom_Circle(circle_ax, radius)
+        start_point = gp_Pnt(start.x, start.y, start.z)
+        end_point = gp_Pnt(self.x, self.y, self.z)
+        u_start = GeomAPI_ProjectPointOnCurve(
+            start_point, geom_circle
+        ).LowerDistanceParameter()
+        u_end = GeomAPI_ProjectPointOnCurve(
+            end_point, geom_circle
+        ).LowerDistanceParameter()
+        if u_end < u_start:
+            u_start -= math.pi * 2
+        return AIS_Circle(geom_circle, u_start, u_end)
+
+
 class CWArcVisualCommand(ArcVisualCommand):
-    pass
+    def circle_normal_dir(self, circle_normal: gp_Vec):
+        return gp_Dir(circle_normal.X(), circle_normal.Y(), circle_normal.Z())
 
 
 class CCWArcVisualCommand(ArcVisualCommand):
-    pass
+    def circle_normal_dir(self, circle_normal: gp_Vec):
+        return gp_Dir(-circle_normal.X(), -circle_normal.Y(), -circle_normal.Z())
 
 
-
-def visualize_fc_job(job: FC_Job.ObjectJob, inverse_trsf: gp_Trsf):
+def visualize_fc_job(job: "FC_Job.ObjectJob", inverse_trsf: gp_Trsf):
     """
     Visualize a FreeCAD job
     https://wiki.freecad.org/Path_scripting#The_FreeCAD_Internal_GCode_Format
     """
-    params = {}
+    params = {"arc_plane": (0, 0, 1)}
     relative = False
 
     visual_commands = []
@@ -79,14 +119,27 @@ def visualize_fc_job(job: FC_Job.ObjectJob, inverse_trsf: gp_Trsf):
             print("CP", command.Name, combined_params)
             match command.Name:
                 case "G0":
-                    params = add_command(visual_commands, RapidVisualCommand, **combined_params)
+                    params = add_command(
+                        visual_commands, RapidVisualCommand, **combined_params
+                    )
                 case "G1":
-                    params = add_command(visual_commands, LinearVisualCommand, **combined_params)
+                    params = add_command(
+                        visual_commands, LinearVisualCommand, **combined_params
+                    )
                 case "G2":
-                    params = add_command(visual_commands, CWArcVisualCommand, **combined_params)
+                    params = add_command(
+                        visual_commands, CWArcVisualCommand, **combined_params
+                    )
                 case "G3":
-                    params = add_command(visual_commands, CCWArcVisualCommand, **combined_params)
-
+                    params = add_command(
+                        visual_commands, CCWArcVisualCommand, **combined_params
+                    )
+                case "G17":
+                    params["arc_plane"] = (0, 0, 1)
+                case "G18":
+                    params["arc_plane"] = (0, 1, 0)
+                case "G19":
+                    params["arc_plane"] = (1, 0, 0)
                 case "G91":
                     relative = True
                     print("Relative mode on")
@@ -97,27 +150,31 @@ def visualize_fc_job(job: FC_Job.ObjectJob, inverse_trsf: gp_Trsf):
                 case _:
                     print("Unknown gcode", command.Name)
 
-            #print(command.Name, command.Parameters)
-            # print(dir(command))
-        #print(op.Proxy.commandlist)
-        #print(visual_commands)
-        if len(visual_commands) < 2:
-            return
+    return visual_commands_to_ais(visual_commands)
 
-        group = AIS_MultipleConnectedInteractive()
-        # Adjust for stock
-        #tp = inverse_trsf.TranslationPart()
-        #tp.SetZ(tp.Z() - 1)
-        #inverse_trsf.SetTranslationPart(gp_Vec(tp))
+
+def visual_commands_to_ais(
+    visual_commands: list[VisualCommand], inverse_trsf: Optional[gp_Trsf] = None
+):
+    if len(visual_commands) < 2:
+        return
+
+    group = AIS_MultipleConnectedInteractive()
+
+    if inverse_trsf:
         group.SetLocalTransformation(inverse_trsf)
 
-        for start, end in pairwise(visual_commands):
-            shape = end.to_ais(start)
-            if shape:
-                group.Connect(shape)
-        return group
+    for start, end in pairwise(visual_commands):
+        shape = end.to_ais(start)
+        if shape:
+            group.Connect(shape)
 
-def add_command(visual_commands: list[VisualCommand], cls: type[VisualCommand], **params):
+    return group
+
+
+def add_command(
+    visual_commands: list[VisualCommand], cls: type[VisualCommand], **params
+):
     try:
         cmd = cls(**params)
         visual_commands.append(cmd)
