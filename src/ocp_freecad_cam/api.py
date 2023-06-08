@@ -1,43 +1,21 @@
 import io
 import logging
-import sys
 import tempfile
 from abc import ABC
-from typing import TypeAlias, Union
 
-from OCP.BRepTools import BRepTools
-from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Face, TopoDS_Shape
-
-logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
-
-FC_PATH = "/home/voneiden/Downloads/freecad/squashfs-root/usr/lib"
-sys.path.append(FC_PATH)
-
-MOD_PATH_PATH = "/home/voneiden/Downloads/freecad/squashfs-root/usr/Mod/Path"
-sys.path.append(MOD_PATH_PATH)
-
-FC_PYTHON = (
-    "/home/voneiden/Downloads/freecad/squashfs-root/usr/lib/python3.10/site-packages/"
-)
-sys.path.append(FC_PYTHON)
-
-# noinspection PyUnresolvedReferences
 import FreeCAD
-
-# noinspection PyUnresolvedReferences
 import Part
 import Path.Base.SetupSheet as PathSetupSheet
 import Path.Log as Log
+from OCP.BRepTools import BRepTools
+from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Face, TopoDS_Shape
 from Path.Main import Job as FCJob
 from Path.Op import MillFace, PocketShape
 from Path.Post.Command import buildPostList
 from Path.Post.Processor import PostProcessor
 
+from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource
 from ocp_freecad_cam.visualizer import visualize_fc_job
-
-Log._useConsole = False
-Log._defaultLogLevel = Log.Level.DEBUG
 
 try:
     import cadquery as cq
@@ -48,13 +26,11 @@ try:
 except ImportError:
     b3d = None
 
-FaceSource: TypeAlias = Union[
-    "cq.Workplane", "cq.Face", list["cq.Face"], "b3d.Face", list["b3d.Face"]
-]
-PlaneSource: TypeAlias = Union[
-    "cq.Workplane", "cq.Plane", "cq.Face", "b3d.Plane", "b3d.Face"
-]
-Plane: TypeAlias = Union["cq.Plane", "b3d.Plane"]
+
+logging.basicConfig()
+logging.getLogger().setLevel(logging.DEBUG)
+Log._useConsole = False
+Log._defaultLogLevel = Log.Level.DEBUG
 
 
 class Op(ABC):
