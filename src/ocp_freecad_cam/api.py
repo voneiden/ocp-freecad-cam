@@ -12,7 +12,7 @@ from Path.Post.Command import buildPostList
 from Path.Post.Processor import PostProcessor
 
 from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource
-from ocp_freecad_cam.operations import FaceOp, Op, PocketOp
+from ocp_freecad_cam.operations import FaceOp, Op, PocketOp, ProfileOp
 from ocp_freecad_cam.visualizer import visualize_fc_job
 
 try:
@@ -88,15 +88,29 @@ class Job:
         self.needs_build = True
         self.ops.append(op)
 
-    def pocket(self, faces: FaceSource, *args, **kwargs) -> "Job":
+    def inner_profile(self, faces: FaceSource, *args, **kwargs):
+        # Side = "Inner"
         breps = faces_to_transformed_breps(faces, self.top_plane)
-        op = PocketOp(self, breps, *args, **kwargs)
+        op = ProfileOp(self, breps, *args, side="Inside", **kwargs)
+        self._add_op(op)
+        return self
+
+    def outer_profile(self, faces: FaceSource, *args, **kwargs):
+        # Side = "Outer"
+        breps = faces_to_transformed_breps(faces, self.top_plane)
+        op = ProfileOp(self, breps, *args, side="Outside", **kwargs)
         self._add_op(op)
         return self
 
     def face(self, faces: FaceSource, *args, **kwargs) -> "Job":
         breps = faces_to_transformed_breps(faces, self.top_plane)
         op = FaceOp(self, breps, *args, **kwargs)
+        self._add_op(op)
+        return self
+
+    def pocket(self, faces: FaceSource, *args, **kwargs) -> "Job":
+        breps = faces_to_transformed_breps(faces, self.top_plane)
+        op = PocketOp(self, breps, *args, **kwargs)
         self._add_op(op)
         return self
 
