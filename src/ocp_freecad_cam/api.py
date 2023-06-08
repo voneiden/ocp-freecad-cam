@@ -1,20 +1,18 @@
 import io
 import logging
 import tempfile
-from abc import ABC
 
 import FreeCAD
 import Part
-import Path.Base.SetupSheet as PathSetupSheet
 import Path.Log as Log
 from OCP.BRepTools import BRepTools
 from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Face, TopoDS_Shape
 from Path.Main import Job as FCJob
-from Path.Op import MillFace, PocketShape
 from Path.Post.Command import buildPostList
 from Path.Post.Processor import PostProcessor
 
 from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource
+from ocp_freecad_cam.operations import FaceOp, Op, PocketOp
 from ocp_freecad_cam.visualizer import visualize_fc_job
 
 try:
@@ -33,69 +31,6 @@ Log._useConsole = False
 Log._defaultLogLevel = Log.Level.DEBUG
 
 
-class Op(ABC):
-    def __init__(self, job: "Job", *args, name=None, **kwargs):
-        self.job = job
-        self.n = len(self.job.ops) + 1
-        self.name = name
-
-    def execute(self, doc):
-        raise NotImplemented
-
-    @property
-    def label(self):
-        if self.name:
-            return self.name
-        return f"{self.__class__.__name__}_{self.n}"
-
-
-class AreaOp(Op, ABC):
-    def __init__(self, job: "Job", faces: FaceSource, *args, **kwargs):
-        super().__init__(job, *args, **kwargs)
-        faces = extract_faces(faces)
-        transformed_faces = [
-            forward_transform(job.top_plane, cq.Face(face)).wrapped for face in faces
-        ]
-        self.op_breps = [to_brep(face) for face in transformed_faces]
-
-    def fc_op(self):
-        raise NotImplemented
-
-    def execute(self, doc):
-        op_features = []
-        for i, brep in enumerate(self.op_breps):
-            fc_compound = Part.Face()
-            fc_compound.importBrepFromString(brep)
-            feature = doc.addObject("Part::Feature", f"brep_{self.n}_{i}")
-            feature.Shape = fc_compound
-            op_features.append((feature, ("Face1",)))
-        fc_op = self.fc_op()
-        fc_op.Base = op_features
-        fc_op.Proxy.execute(fc_op)
-
-
-class PocketOp(AreaOp):
-    """2.5D pocket op"""
-
-    def fc_op(self):
-        name = self.label
-        PathSetupSheet.RegisterOperation(
-            name, PocketShape.Create, PocketShape.SetupProperties
-        )
-        return PocketShape.Create(name)
-
-
-class FaceOp(AreaOp):
-    def fc_op(self):
-        name = self.label
-        PathSetupSheet.RegisterOperation(
-            name, MillFace.Create, MillFace.SetupProperties
-        )
-        fc_op = MillFace.Create(name)
-        fc_op.BoundaryShape = "Stock"
-        return fc_op
-
-
 class Job:
     def __init__(self, top_plane: PlaneSource, obj):
         self.top_plane = extract_plane(top_plane)
@@ -103,18 +38,18 @@ class Job:
         self.job_obj_brep = to_brep(transformed_obj.wrapped)  # todo quick hack
         self.ops: list[Op] = []
         self.fc_job = None
+        self.needs_build = True
+        self.doc = None
 
-    def show(self):
-        return visualize_fc_job(self.fc_job, reverse_transform_tsrf(self.top_plane))
-
-    def to_gcode(self):
-        doc = FreeCAD.newDocument()
+    def _build(self):
+        self.doc = FreeCAD.newDocument()
         fc_compound = Part.Compound()
         fc_compound.importBrepFromString(self.job_obj_brep)
-        feature = doc.addObject("Part::Feature", f"root_brep")
+        feature = self.doc.addObject("Part::Feature", f"root_brep")
         feature.Shape = fc_compound
 
         job = FCJob.Create("Job", [feature])
+        self.job = job
         self.fc_job = job.Proxy
         job.PostProcessor = "grbl"
         job.Stock.ExtZpos = 0
@@ -122,17 +57,25 @@ class Job:
         job.Tools.Group[0].Tool.Diameter = 1
 
         for op in self.ops:
-            op.execute(doc)
+            op.execute(self.doc)
 
-        pp = job.PostProcessor
+        self.doc.recompute()
 
-        print(dir(pp))
-        doc.recompute()
+    def show(self):
+        if self.needs_build:
+            self._build()
 
+        return visualize_fc_job(self.fc_job, reverse_transform_tsrf(self.top_plane))
+
+    def to_gcode(self):
+        if self.needs_build:
+            self._build()
+
+        job = self.job
         postlist = buildPostList(job)
         processor = PostProcessor.load(job.PostProcessor)
 
-        doc.saveAs("test2.fcstd")
+        self.doc.saveAs("test2.fcstd")
         print(postlist)
 
         for idx, section in enumerate(postlist):
@@ -142,17 +85,28 @@ class Job:
                 print("Got gcode", gcode)
 
     def _add_op(self, op: Op):
+        self.needs_build = True
         self.ops.append(op)
 
     def pocket(self, faces: FaceSource, *args, **kwargs) -> "Job":
-        op = PocketOp(self, faces, *args, **kwargs)
+        breps = faces_to_transformed_breps(faces, self.top_plane)
+        op = PocketOp(self, breps, *args, **kwargs)
         self._add_op(op)
         return self
 
     def face(self, faces: FaceSource, *args, **kwargs) -> "Job":
-        op = FaceOp(self, faces, *args, **kwargs)
+        breps = faces_to_transformed_breps(faces, self.top_plane)
+        op = FaceOp(self, breps, *args, **kwargs)
         self._add_op(op)
         return self
+
+
+def faces_to_transformed_breps(faces: FaceSource, top_plane: Plane):
+    faces = extract_faces(faces)
+    transformed_faces = [
+        forward_transform(top_plane, cq.Face(face)).wrapped for face in faces
+    ]
+    return [to_brep(face) for face in transformed_faces]
 
 
 def create_job_transformations(top_plane):
