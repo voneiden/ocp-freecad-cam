@@ -1,4 +1,5 @@
 import io
+import logging
 import sys
 import tempfile
 from abc import ABC
@@ -6,8 +7,7 @@ from typing import TypeAlias, Union
 
 from OCP.BRepTools import BRepTools
 from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Face, TopoDS_Shape
-from OCP.gp import gp_Trsf
-import logging
+
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
 
@@ -27,14 +27,14 @@ import FreeCAD
 
 # noinspection PyUnresolvedReferences
 import Part
-import Path
-from Path.Main import Job as FCJob
-from Path.Op import MillFace, Pocket, PocketShape
-from Path.Post.Command import buildPostList
-from Path.Post.Processor import PostProcessor
-from ocp_freecad_cam.visualizer import visualize_fc_job
 import Path.Base.SetupSheet as PathSetupSheet
 import Path.Log as Log
+from Path.Main import Job as FCJob
+from Path.Op import MillFace, PocketShape
+from Path.Post.Command import buildPostList
+from Path.Post.Processor import PostProcessor
+
+from ocp_freecad_cam.visualizer import visualize_fc_job
 
 Log._useConsole = False
 Log._defaultLogLevel = Log.Level.DEBUG
@@ -77,9 +77,10 @@ class AreaOp(Op, ABC):
     def __init__(self, job: "Job", faces: FaceSource, *args, **kwargs):
         super().__init__(job, *args, **kwargs)
         faces = extract_faces(faces)
-        transformed_faces = [forward_transform(job.top_plane, cq.Face(face)).wrapped for face in faces]
+        transformed_faces = [
+            forward_transform(job.top_plane, cq.Face(face)).wrapped for face in faces
+        ]
         self.op_breps = [to_brep(face) for face in transformed_faces]
-
 
     def fc_op(self):
         raise NotImplemented
@@ -98,18 +99,22 @@ class AreaOp(Op, ABC):
 
 
 class PocketOp(AreaOp):
-    """ 2.5D pocket op """
+    """2.5D pocket op"""
+
     def fc_op(self):
         name = self.label
-        PathSetupSheet.RegisterOperation(name, PocketShape.Create, PocketShape.SetupProperties)
+        PathSetupSheet.RegisterOperation(
+            name, PocketShape.Create, PocketShape.SetupProperties
+        )
         return PocketShape.Create(name)
-
 
 
 class FaceOp(AreaOp):
     def fc_op(self):
         name = self.label
-        PathSetupSheet.RegisterOperation(name, MillFace.Create, MillFace.SetupProperties)
+        PathSetupSheet.RegisterOperation(
+            name, MillFace.Create, MillFace.SetupProperties
+        )
         fc_op = MillFace.Create(name)
         fc_op.BoundaryShape = "Stock"
         return fc_op
@@ -230,6 +235,7 @@ def reverse_transform(plane: Plane, shape):
 
     raise ValueError(f"Unknown type of plane: {type(plane)}")
 
+
 def reverse_transform_tsrf(plane: Plane):
     if cq and isinstance(plane, cq.Plane):
         return plane.rG.wrapped.Trsf()
@@ -238,6 +244,7 @@ def reverse_transform_tsrf(plane: Plane):
         return plane.reverse_transform.wrapped.Trsf()
 
     raise ValueError(f"Unknown type of plane: {type(plane)}")
+
 
 def extract_faces(face_source: FaceSource) -> list[TopoDS_Face]:
     if isinstance(face_source, list):
