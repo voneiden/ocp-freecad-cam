@@ -150,7 +150,7 @@ def visualize_fc_job(job: "FC_Job.ObjectJob", inverse_trsf: gp_Trsf):
                 case _:
                     print("Unknown gcode", command.Name)
 
-    return visual_commands_to_ais(visual_commands)
+    return visual_commands_to_ais(visual_commands, inverse_trsf=inverse_trsf)
 
 
 def visual_commands_to_ais(
