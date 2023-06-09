@@ -2,8 +2,15 @@
 This is the user facing API of ocp_freecad_cam
 
 TODO: Investigate setting FreeCAD units
+* Root.BaseApp.Preferences.Units
+  * UserSchema
+    * "6" for Metric CNC
+    * "3" for Imperial Decimal
+    * "5" for US Building
 TODO: Investigate setting opencamlib settings
+* Root.BaseApp.Preferences.Path.EnableAdvancedOCLFeatures "1"
 TODO: Investigate setting absolute paths for toolbits?
+* Root.BaseApp.Preferences.Path.UseAbsoluteToolPaths "1"
 
 """
 import io
@@ -52,7 +59,8 @@ class Job:
         self,
         top_plane: PlaneSource,
         model: CompoundSource,
-        geometry_tolerance="0.01 mm",
+        units: Literal["metric", "imperial"] = "metric",
+        geometry_tolerance=None,
     ):
         self.top_plane = extract_plane(top_plane)
 
@@ -69,13 +77,32 @@ class Job:
         # Internal attributes
         self.ops: list[Op] = []
         self.fc_job = None
-        self.needs_build = True
+        self._needs_build = True
         self.doc = None
+        self.units = units
 
         # FreeCAD attributes
-        geometry_tolerance = geometry_tolerance
+        self.geometry_tolerance = geometry_tolerance
+
+    def _configure_freecad(self):
+        # Configure units
+        param = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Units")
+        if self.units == "metric":
+            param.SetInt("UserSchema", 6)
+        elif self.units == "imperial":
+            param.SetInt("UserSchema", 3)
+        else:
+            raise ValueError(f"Unknown unit: {self.units}")
+
+        # Enable OCL
+        param = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Path")
+        param.SetInt("EnableAdvancedOCLFeatures", 1)
+
+        # Absolute toolpaths (not sure if needed?)
+        # param.SetInt("UseAbsoluteToolPaths", 1)
 
     def _build(self):
+        self._configure_freecad()
         self.doc = FreeCAD.newDocument()
         fc_compound = Part.Compound()
         fc_compound.importBrepFromString(self.job_obj_brep)
@@ -94,15 +121,16 @@ class Job:
             op.execute(self.doc)
 
         self.doc.recompute()
+        self._needs_build = False
 
     def show(self):
-        if self.needs_build:
+        if self._needs_build:
             self._build()
 
         return visualize_fc_job(self.fc_job, reverse_transform_tsrf(self.top_plane))
 
     def to_gcode(self):
-        if self.needs_build:
+        if self._needs_build:
             self._build()
 
         job = self.job
@@ -119,7 +147,7 @@ class Job:
                 return gcode
 
     def _add_op(self, op: Op):
-        self.needs_build = True
+        self._needs_build = True
         self.ops.append(op)
 
     @property
