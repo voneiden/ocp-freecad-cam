@@ -20,42 +20,33 @@ if TYPE_CHECKING:
 
 
 class Op(ABC):
-    def __init__(self, job: "Job", *args, name=None, **kwargs):
-        self.job = job
-        self.n = len(self.job.ops) + 1
-        self.name = name
-
-    def execute(self, doc):
-        raise NotImplemented
-
-    @property
-    def label(self):
-        if self.name:
-            return self.name
-        return f"{self.__class__.__name__}_{self.n}"
-
-
-class AreaOp(Op, ABC):
     def __init__(
         self,
         job: "Job",
+        *args,
+        tool_controller,
         face_count: int,
         edge_count: int,
         vertex_count: int,
         compound_brep: str,
-        *args,
-        **kwargs,
+        name=None,
     ):
-        super().__init__(job, *args, **kwargs)
+        self.job = job
+        self.n = len(self.job.ops) + 1
+        self.name = name
+        self.tool_controller = tool_controller
         self.face_count = face_count
         self.edge_count = edge_count
         self.vertex_count = vertex_count
         self.compound_brep = compound_brep
 
-    def fc_op(self, base_features):
-        raise NotImplemented
-
     def execute(self, doc):
+        base_features = self.create_base_features(doc)
+        fc_op = self.create_operation(base_features)
+        fc_op.ToolController = self.tool_controller
+        fc_op.Proxy.execute(fc_op)
+
+    def create_base_features(self, doc):
         fc_compound = Part.Compound()
         fc_compound.importBrepFromString(self.compound_brep)
         feature = doc.addObject("Part::Feature", f"op_brep_{self.n}")
@@ -72,9 +63,26 @@ class AreaOp(Op, ABC):
             sub_selectors.append(f"Vertex{i}")
 
         base_features.append((feature, tuple(sub_selectors)))
+        return base_features
 
-        fc_op = self.fc_op(base_features)
-        fc_op.Proxy.execute(fc_op)
+    def create_operation(self, base_features):
+        raise NotImplemented
+
+    @property
+    def label(self):
+        if self.name:
+            return self.name
+        return f"{self.__class__.__name__}_{self.n}"
+
+
+class AreaOp(Op, ABC):
+    def __init__(
+        self,
+        job: "Job",
+        *args,
+        **kwargs,
+    ):
+        super().__init__(job, *args, **kwargs)
 
 
 class ProfileOp(AreaOp):
@@ -89,7 +97,7 @@ class ProfileOp(AreaOp):
         super().__init__(job, *args, **kwargs)
         self.side = side
 
-    def fc_op(self, base_features):
+    def create_operation(self, base_features):
         name = self.label
         PathSetupSheet.RegisterOperation(name, Profile.Create, Profile.SetupProperties)
         fc_op = Profile.Create(name)
@@ -103,7 +111,7 @@ class FaceOp(AreaOp):
         super().__init__(*args, **kwargs)
         self.finish_depth = finish_depth
 
-    def fc_op(self, base_features):
+    def create_operation(self, base_features):
         name = self.label
         PathSetupSheet.RegisterOperation(
             name, MillFace.Create, MillFace.SetupProperties
@@ -122,7 +130,7 @@ class PocketOp(AreaOp):
         super().__init__(*args, **kwargs)
         self.finish_depth = finish_depth
 
-    def fc_op(self, base_features):
+    def create_operation(self, base_features):
         name = self.label
         PathSetupSheet.RegisterOperation(
             name, PocketShape.Create, PocketShape.SetupProperties

@@ -20,12 +20,14 @@ from typing import Literal
 
 import FreeCAD
 import Part
+import Path.Base.Util as PathUtil
 import Path.Log as Log
 from OCP.BRepTools import BRepTools
 from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Face, TopoDS_Shape
 from Path.Main import Job as FCJob
 from Path.Post.Command import buildPostList
 from Path.Post.Processor import PostProcessor
+from Path.Tool import Bit, Controller
 
 from ocp_freecad_cam.api_util import (
     CompoundSource,
@@ -78,11 +80,14 @@ class Job:
         self.ops: list[Op] = []
         self.fc_job = None
         self._needs_build = True
-        self.doc = None
         self.units = units
 
         # FreeCAD attributes
         self.geometry_tolerance = geometry_tolerance
+
+        # Prep document
+        self._configure_freecad()
+        self.doc = FreeCAD.newDocument()
 
     def _configure_freecad(self):
         # Configure units
@@ -102,8 +107,6 @@ class Job:
         # param.SetInt("UseAbsoluteToolPaths", 1)
 
     def _build(self):
-        self._configure_freecad()
-        self.doc = FreeCAD.newDocument()
         fc_compound = Part.Compound()
         fc_compound.importBrepFromString(self.job_obj_brep)
         feature = self.doc.addObject("Part::Feature", f"root_brep")
@@ -150,12 +153,20 @@ class Job:
         self._needs_build = True
         self.ops.append(op)
 
+    def set_active(self):
+        FreeCAD.setActiveDocument(self.doc.Name)
+
     @property
     def _forward_trsf(self):
         return forward_transform_tsrf(self.top_plane)
 
     def profile(
-        self, shapes: ShapeSource, *args, side: Literal["in", "out"] = "out", **kwargs
+        self,
+        shapes: ShapeSource,
+        tool: "Toolbit",
+        *args,
+        side: Literal["in", "out"] = "out",
+        **kwargs,
     ):
         """
         2.5D profile operation will cut the
@@ -164,11 +175,13 @@ class Job:
         :param kwargs:
         :return:
         """
+        self.set_active()
         side = ProfileOp.kwargs_mapping["side"][side]
         op = ProfileOp(
             self,
             *args,
             side=side,
+            tool_controller=tool.tool_controller,
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
             **kwargs,
         )
@@ -178,10 +191,14 @@ class Job:
     def _profile(self, base):
         pass
 
-    def face(self, shapes: ShapeSource, *args, finish_depth=0.0, **kwargs) -> "Job":
+    def face(
+        self, shapes: ShapeSource, *args, tool: "Toolbit", finish_depth=0.0, **kwargs
+    ) -> "Job":
+        self.set_active()
         op = FaceOp(
             self,
             *args,
+            tool_controller=tool.tool_controller,
             finish_depth=finish_depth,
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
             **kwargs,
@@ -189,10 +206,14 @@ class Job:
         self._add_op(op)
         return self
 
-    def pocket(self, shapes: ShapeSource, *args, finish_depth=0.0, **kwargs) -> "Job":
+    def pocket(
+        self, shapes: ShapeSource, *args, tool: "Toolbit", finish_depth=0.0, **kwargs
+    ) -> "Job":
+        self.set_active()
         op = PocketOp(
             self,
             *args,
+            tool_controller=tool.tool_controller,
             finish_depth=finish_depth,
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
             **kwargs,
@@ -302,3 +323,87 @@ def to_brep(shape: TopoDS_Shape):
     BRepTools.Write_s(shape, data)
     data.seek(0)
     return data.read().decode("utf8")
+
+
+class Toolbit:
+    props: dict
+    prop_mapping = {}
+
+    def __init__(self, tool_name: str, tool_file_name: str, tool_number=1, path=None):
+        self.tool_name = tool_name
+        self.tool_file_name = tool_file_name
+        self.tool_number = tool_number
+        self.path = path
+        self.props = {}
+        self.obj = None
+        self._tool_controller = None
+
+    @property
+    def tool_controller(self):
+        if self._tool_controller is None:
+            self.create()
+        return self._tool_controller
+
+    def create(self):
+        tool_shape = Bit.findToolShape(self.tool_file_name, self.path)
+        if not tool_shape:
+            raise ValueError(
+                f"Could not find tool {self.tool_file_name} (path: {self.path})"
+            )
+
+        self.obj = Bit.Factory.Create(self.tool_name, tool_shape)
+        self._tool_controller = Controller.Create(
+            f"TC: {self.tool_name}", tool=self.obj, toolNumber=self.tool_number
+        )
+
+        for k, v in self.props.items():
+            PathUtil.setProperty(self.obj, self.prop_mapping[k], v)
+
+    def clean_props(self, **kwargs):
+        return {k: v for k, v in kwargs.items() if v is not None}
+
+
+class Endmill(Toolbit):
+    file_name = "endmill.fcstd"
+    prop_mapping = {
+        "chip_load": "ChipLoad",
+        "flutes": "Flutes",
+        "material": "Material",
+        "spindle_direction": "SpindleDirection",
+        "cutting_edge_height": "CuttingEdgeHeight",
+        "diameter": "Diameter",
+        "length": "Length",
+        "shank_diameter": "Shank Diameter",
+    }
+
+    def __init__(
+        self,
+        tool_name: str,
+        # Generic
+        chip_load=None,
+        flutes=None,
+        material=None,
+        spindle_direction=None,
+        # Bit specific
+        cutting_edge_height=None,
+        diameter=None,
+        length=None,
+        shank_diameter=None,
+        # TC
+        tool_number: int = 1,
+    ):
+        super().__init__(tool_name, self.file_name, tool_number=tool_number)
+
+        self.props = self.clean_props(
+            chip_load=chip_load,
+            flutes=flutes,
+            material=material,
+            cutting_edge_height=cutting_edge_height,
+            diameter=diameter,
+            length=length,
+            shank_diameter=shank_diameter,
+        )
+
+
+class Ballnose(Endmill):
+    file_name = "ballnose.fcstd"
