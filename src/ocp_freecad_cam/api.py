@@ -378,7 +378,7 @@ class Endmill(Toolbit):
 
     def __init__(
         self,
-        tool_name: str,
+        tool_name: str = "",
         # Generic
         chip_load=None,
         flutes=None,
