@@ -38,3 +38,18 @@ The three paths (also contents of the .pth file) for the above AppImage example 
 in a file like 
 
 `/home/user/miniconda3/envs/cq/lib/python3.10/site-packages/freecad.pth`
+
+## Configuring FreeCAD
+Launch FreeCAD and configure the following to suit your needs:
+
+* General -> Unit System
+  * For metric use: `Metric Small Parts & CNC`
+  * For imperial use: `Imperial Decimal` or `Building US`
+* Path -> Job Preferences -> Tools -> Check `Store absolute paths` (TODO is this needed?) 
+* Path -> Advanced -> Enable OCL dependent features
+
+
+# Limitations
+
+Pocket3D does not work, possibly related to https://github.com/FreeCAD/FreeCAD/issues/6815 - shouldn't be a big loss
+though, Surface3D can get the same things done IMO.
