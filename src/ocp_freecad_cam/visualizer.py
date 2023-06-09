@@ -8,6 +8,7 @@ from OCP.AIS import AIS_Circle, AIS_Line, AIS_MultipleConnectedInteractive
 from OCP.Geom import Geom_CartesianPoint, Geom_Circle
 from OCP.GeomAPI import GeomAPI_ProjectPointOnCurve
 from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt, gp_Trsf, gp_Vec
+from Path.Post.Command import buildPostList
 
 if typing.TYPE_CHECKING:
     from Path.Main import Job as FC_Job
@@ -92,7 +93,7 @@ class CCWArcVisualCommand(ArcVisualCommand):
         return gp_Dir(-circle_normal.X(), -circle_normal.Y(), -circle_normal.Z())
 
 
-def visualize_fc_job(job: "FC_Job.ObjectJob", inverse_trsf: gp_Trsf):
+def visualize_fc_job(job, inverse_trsf: gp_Trsf):
     """
     Visualize a FreeCAD job
     https://wiki.freecad.org/Path_scripting#The_FreeCAD_Internal_GCode_Format
@@ -102,51 +103,58 @@ def visualize_fc_job(job: "FC_Job.ObjectJob", inverse_trsf: gp_Trsf):
 
     visual_commands = []
 
-    for op in job.allOperations():
-        for command in op.Proxy.commandlist:
-            new_params = {k.lower(): v for k, v in command.Parameters.items()}
-            if relative:
-                # Convert to absolute
-                rel_attrs = ["x", "y", "z"]
-                for attr in rel_attrs:
-                    if attr in new_params:
-                        # This will catch fire if params does not have a previous value
-                        # Not sure if FreeCAD generates code like that, so lets see
-                        # if it needs to be handled..
-                        new_params[attr] = new_params[attr] + params[attr]
-            combined_params = {**params, **new_params}
-            match command.Name:
-                case "G0":
-                    params = add_command(
-                        visual_commands, RapidVisualCommand, **combined_params
-                    )
-                case "G1":
-                    params = add_command(
-                        visual_commands, LinearVisualCommand, **combined_params
-                    )
-                case "G2":
-                    params = add_command(
-                        visual_commands, CWArcVisualCommand, **combined_params
-                    )
-                case "G3":
-                    params = add_command(
-                        visual_commands, CCWArcVisualCommand, **combined_params
-                    )
-                case "G17":
-                    params["arc_plane"] = (0, 0, 1)
-                case "G18":
-                    params["arc_plane"] = (0, 1, 0)
-                case "G19":
-                    params["arc_plane"] = (1, 0, 0)
-                case "G91":
-                    relative = True
-                    print("Relative mode on")
-                case "G90":
-                    relative = False
-                    print("Relative mode off")
+    postlist = buildPostList(job)
+    for name, sub_op_list in postlist:
+        for op in sub_op_list:
+            if hasattr(op, "Path"):
+                commands = op.Path.Commands
+            else:
+                commands = op.Proxy.commandlist
 
-                case _:
-                    print("Unknown gcode", command.Name)
+            for command in commands:
+                new_params = {k.lower(): v for k, v in command.Parameters.items()}
+                if relative:
+                    # Convert to absolute
+                    rel_attrs = ["x", "y", "z"]
+                    for attr in rel_attrs:
+                        if attr in new_params:
+                            # This will catch fire if params does not have a previous value
+                            # Not sure if FreeCAD generates code like that, so lets see
+                            # if it needs to be handled..
+                            new_params[attr] = new_params[attr] + params[attr]
+                combined_params = {**params, **new_params}
+                match command.Name:
+                    case "G0":
+                        params = add_command(
+                            visual_commands, RapidVisualCommand, **combined_params
+                        )
+                    case "G1":
+                        params = add_command(
+                            visual_commands, LinearVisualCommand, **combined_params
+                        )
+                    case "G2":
+                        params = add_command(
+                            visual_commands, CWArcVisualCommand, **combined_params
+                        )
+                    case "G3":
+                        params = add_command(
+                            visual_commands, CCWArcVisualCommand, **combined_params
+                        )
+                    case "G17":
+                        params["arc_plane"] = (0, 0, 1)
+                    case "G18":
+                        params["arc_plane"] = (0, 1, 0)
+                    case "G19":
+                        params["arc_plane"] = (1, 0, 0)
+                    case "G91":
+                        relative = True
+                        print("Relative mode on")
+                    case "G90":
+                        relative = False
+                        print("Relative mode off")
+
+                    case _:
+                        print("Unknown gcode", command.Name)
 
     return visual_commands_to_ais(visual_commands, inverse_trsf=inverse_trsf)
 

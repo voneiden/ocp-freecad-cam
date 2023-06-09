@@ -130,7 +130,7 @@ class Job:
         if self._needs_build:
             self._build()
 
-        return visualize_fc_job(self.fc_job, reverse_transform_tsrf(self.top_plane))
+        return visualize_fc_job(self.job, reverse_transform_tsrf(self.top_plane))
 
     def to_gcode(self):
         if self._needs_build:
@@ -144,7 +144,13 @@ class Job:
         print(postlist)
 
         for idx, section in enumerate(postlist):
+            print("idx", id)
+
             name, sublist = section
+            print("-name", name)
+            print("-sublist", sublist)
+            print(sublist[0].Path.Commands)
+
             with tempfile.NamedTemporaryFile() as tmp_file:
                 gcode = processor.export(sublist, tmp_file.name, "--no-show-editor")
                 return gcode
