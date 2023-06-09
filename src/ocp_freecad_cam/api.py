@@ -1,6 +1,15 @@
+"""
+This is the user facing API of ocp_freecad_cam
+
+TODO: Investigate setting FreeCAD units
+TODO: Investigate setting opencamlib settings
+TODO: Investigate setting absolute paths for toolbits?
+
+"""
 import io
 import logging
 import tempfile
+from typing import Literal
 
 import FreeCAD
 import Part
@@ -11,6 +20,14 @@ from Path.Main import Job as FCJob
 from Path.Post.Command import buildPostList
 from Path.Post.Processor import PostProcessor
 
+from ocp_freecad_cam.api_util import (
+    CompoundSource,
+    ShapeSource,
+    extract_topods_shapes,
+    shape_source_to_compound_brep,
+    shape_to_brep,
+    transform_shape,
+)
 from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource
 from ocp_freecad_cam.operations import FaceOp, Op, PocketOp, ProfileOp
 from ocp_freecad_cam.visualizer import visualize_fc_job
@@ -24,7 +41,6 @@ try:
 except ImportError:
     b3d = None
 
-
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
 Log._useConsole = False
@@ -32,14 +48,32 @@ Log._defaultLogLevel = Log.Level.DEBUG
 
 
 class Job:
-    def __init__(self, top_plane: PlaneSource, obj):
+    def __init__(
+        self,
+        top_plane: PlaneSource,
+        model: CompoundSource,
+        geometry_tolerance="0.01 mm",
+    ):
         self.top_plane = extract_plane(top_plane)
-        transformed_obj = forward_transform(self.top_plane, obj)
-        self.job_obj_brep = to_brep(transformed_obj.wrapped)  # todo quick hack
+
+        # Prepare job model
+        model_compounds = extract_topods_shapes(model, compound=True)
+        if model_count := len(model_compounds) != 1:
+            raise ValueError(
+                f"Job should be based around a single compound (got {model_count})"
+            )
+        self.job_obj_brep = shape_to_brep(
+            transform_shape(model_compounds[0], self._forward_trsf)
+        )
+
+        # Internal attributes
         self.ops: list[Op] = []
         self.fc_job = None
         self.needs_build = True
         self.doc = None
+
+        # FreeCAD attributes
+        geometry_tolerance = geometry_tolerance
 
     def _build(self):
         self.doc = FreeCAD.newDocument()
@@ -80,58 +114,63 @@ class Job:
 
         for idx, section in enumerate(postlist):
             name, sublist = section
-            with tempfile.NamedTemporaryFile() as tmp:
-                gcode = processor.export(sublist, tmp.name, "--no-show-editor")
-                print("Got gcode", gcode)
+            with tempfile.NamedTemporaryFile() as tmp_file:
+                gcode = processor.export(sublist, tmp_file.name, "--no-show-editor")
+                return gcode
 
     def _add_op(self, op: Op):
         self.needs_build = True
         self.ops.append(op)
 
-    def inner_profile(self, faces: FaceSource, *args, **kwargs):
-        # Side = "Inner"
-        breps = faces_to_transformed_breps(faces, self.top_plane)
-        op = ProfileOp(self, breps, *args, side="Inside", **kwargs)
+    @property
+    def _forward_trsf(self):
+        return forward_transform_tsrf(self.top_plane)
+
+    def profile(
+        self, shapes: ShapeSource, *args, side: Literal["in", "out"] = "out", **kwargs
+    ):
+        """
+        2.5D profile operation will cut the
+        :param faces:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        side = ProfileOp.kwargs_mapping["side"][side]
+        op = ProfileOp(
+            self,
+            *args,
+            side=side,
+            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **kwargs,
+        )
         self._add_op(op)
         return self
 
-    def outer_profile(self, faces: FaceSource, *args, **kwargs):
-        # Side = "Outer"
-        breps = faces_to_transformed_breps(faces, self.top_plane)
-        op = ProfileOp(self, breps, *args, side="Outside", **kwargs)
+    def _profile(self, base):
+        pass
+
+    def face(self, shapes: ShapeSource, *args, finish_depth=0.0, **kwargs) -> "Job":
+        op = FaceOp(
+            self,
+            *args,
+            finish_depth=finish_depth,
+            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **kwargs,
+        )
         self._add_op(op)
         return self
 
-    def face(self, faces: FaceSource, *args, **kwargs) -> "Job":
-        breps = faces_to_transformed_breps(faces, self.top_plane)
-        op = FaceOp(self, breps, *args, **kwargs)
+    def pocket(self, shapes: ShapeSource, *args, finish_depth=0.0, **kwargs) -> "Job":
+        op = PocketOp(
+            self,
+            *args,
+            finish_depth=finish_depth,
+            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **kwargs,
+        )
         self._add_op(op)
         return self
-
-    def pocket(self, faces: FaceSource, *args, **kwargs) -> "Job":
-        breps = faces_to_transformed_breps(faces, self.top_plane)
-        op = PocketOp(self, breps, *args, **kwargs)
-        self._add_op(op)
-        return self
-
-
-def faces_to_transformed_breps(faces: FaceSource, top_plane: Plane):
-    faces = extract_faces(faces)
-    transformed_faces = [
-        forward_transform(top_plane, cq.Face(face)).wrapped for face in faces
-    ]
-    return [to_brep(face) for face in transformed_faces]
-
-
-def create_job_transformations(top_plane):
-    """
-    Notes on transformation:
-
-    FreeCAD will place the job zero into the bounding box's top plane's
-    center.
-
-    Only thing that matters when sending BREP's to FreeCAD is the orientation
-    """
 
 
 def extract_plane(plane_source: PlaneSource) -> Plane:
@@ -160,22 +199,32 @@ def extract_plane(plane_source: PlaneSource) -> Plane:
     raise ValueError(f"Unknown type of plane: {type(plane_source)}")
 
 
-def forward_transform(plane: Plane, shape):
+def forward_transform(plane: Plane, shape: TopoDS_Shape) -> TopoDS_Shape:
     if cq and isinstance(plane, cq.Plane):
-        return shape.transformShape(plane.fG)
+        return cq.Shape(shape).transformShape(plane.fG).wrapped
 
     elif b3d and isinstance(plane, b3d.Plane):
-        return plane.to_local_coords(shape)
+        return plane.to_local_coords(b3d.Shape(shape)).wrapped
 
     raise ValueError(f"Unknown type of plane: {type(plane)}")
 
 
-def reverse_transform(plane: Plane, shape):
+def reverse_transform(plane: Plane, shape: TopoDS_Shape) -> TopoDS_Shape:
     if cq and isinstance(plane, cq.Plane):
-        return shape.transformShape(plane.rG)
+        return cq.Shape(shape).transformShape(plane.rG).wrapped
 
     elif b3d and isinstance(plane, b3d.Plane):
-        return plane.from_local_coords(shape)
+        return plane.from_local_coords(b3d.Shape(shape).wrapped)
+
+    raise ValueError(f"Unknown type of plane: {type(plane)}")
+
+
+def forward_transform_tsrf(plane: Plane):
+    if cq and isinstance(plane, cq.Plane):
+        return plane.fG.wrapped.Trsf()
+
+    elif b3d and isinstance(plane, b3d.Plane):
+        return plane.forward_transform.wrapped.Trsf()
 
     raise ValueError(f"Unknown type of plane: {type(plane)}")
 

@@ -1,3 +1,13 @@
+"""
+Operation abstractions that interface directly with FreeCAD API
+
+Developer notes:
+- Setting Operation.Base resets some (?) properties
+- Pocket 3D appears to be buggy, https://github.com/FreeCAD/FreeCAD/issues/6815 possibly related
+
+
+"""
+
 from abc import ABC
 from typing import TYPE_CHECKING, Literal
 
@@ -26,28 +36,55 @@ class Op(ABC):
 
 
 class AreaOp(Op, ABC):
-    def __init__(self, job: "Job", breps: list[str], *args, **kwargs):
+    def __init__(
+        self,
+        job: "Job",
+        face_count: int,
+        edge_count: int,
+        vertex_count: int,
+        compound_brep: str,
+        *args,
+        **kwargs,
+    ):
         super().__init__(job, *args, **kwargs)
-        self.op_breps = breps
+        self.face_count = face_count
+        self.edge_count = edge_count
+        self.vertex_count = vertex_count
+        self.compound_brep = compound_brep
 
     def fc_op(self, base_features):
         raise NotImplemented
 
     def execute(self, doc):
+        fc_compound = Part.Compound()
+        fc_compound.importBrepFromString(self.compound_brep)
+        feature = doc.addObject("Part::Feature", f"op_brep_{self.n}")
+        feature.Shape = fc_compound
+
         base_features = []
-        for i, brep in enumerate(self.op_breps):
-            fc_compound = Part.Face()
-            fc_compound.importBrepFromString(brep)
-            feature = doc.addObject("Part::Feature", f"brep_{self.n}_{i}")
-            feature.Shape = fc_compound
-            base_features.append((feature, ("Face1",)))
+        sub_selectors = []
+
+        for i in range(1, self.face_count + 1):
+            sub_selectors.append(f"Face{i}")
+        for i in range(1, self.edge_count + 1):
+            sub_selectors.append(f"Edge{i}")
+        for i in range(1, self.vertex_count + 1):
+            sub_selectors.append(f"Vertex{i}")
+
+        base_features.append((feature, tuple(sub_selectors)))
+
         fc_op = self.fc_op(base_features)
-        print("BEFORE", getattr(fc_op, "Side", "-"))
         fc_op.Proxy.execute(fc_op)
-        print("AFTER", getattr(fc_op, "Side", "-"))
 
 
 class ProfileOp(AreaOp):
+    kwargs_mapping = {
+        "side": {
+            "in": "Inside",
+            "out": "Outside",
+        }
+    }
+
     def __init__(self, job: "Job", *args, side: Literal["Inside", "Outside"], **kwargs):
         super().__init__(job, *args, **kwargs)
         self.side = side
@@ -57,13 +94,15 @@ class ProfileOp(AreaOp):
         PathSetupSheet.RegisterOperation(name, Profile.Create, Profile.SetupProperties)
         fc_op = Profile.Create(name)
         fc_op.Base = base_features
-        print("SET FC_OP to", self.side)
         fc_op.Side = self.side
-        print("FC_OP set to", fc_op.Side)
         return fc_op
 
 
 class FaceOp(AreaOp):
+    def __init__(self, *args, finish_depth=0.0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.finish_depth = finish_depth
+
     def fc_op(self, base_features):
         name = self.label
         PathSetupSheet.RegisterOperation(
@@ -72,11 +111,16 @@ class FaceOp(AreaOp):
         fc_op = MillFace.Create(name)
         fc_op.Base = base_features
         fc_op.BoundaryShape = "Stock"
+        fc_op.FinishDepth = self.finish_depth
         return fc_op
 
 
 class PocketOp(AreaOp):
     """2.5D pocket op"""
+
+    def __init__(self, *args, finish_depth=0.0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.finish_depth = finish_depth
 
     def fc_op(self, base_features):
         name = self.label
@@ -85,4 +129,5 @@ class PocketOp(AreaOp):
         )
         fc_op = PocketShape.Create(name)
         fc_op.Base = base_features
+        fc_op.FinishDepth = self.finish_depth
         return fc_op

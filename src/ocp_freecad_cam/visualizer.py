@@ -64,7 +64,6 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
         cv = gp_Vec(self.i, self.j, self.k)
         forward = cv.Crossed(arc_plane)
         circle_normal = cv.Crossed(forward)
-        print("CNZ", circle_normal.Z())
         circle_normal_dir = self.circle_normal_dir(circle_normal)
 
         forward_dir = gp_Dir(forward.X(), forward.Y(), forward.Z())
@@ -116,7 +115,6 @@ def visualize_fc_job(job: "FC_Job.ObjectJob", inverse_trsf: gp_Trsf):
                         # if it needs to be handled..
                         new_params[attr] = new_params[attr] + params[attr]
             combined_params = {**params, **new_params}
-            print("CP", command.Name, combined_params)
             match command.Name:
                 case "G0":
                     params = add_command(
