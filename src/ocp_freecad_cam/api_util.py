@@ -45,6 +45,8 @@ ShapeSource: TypeAlias = Union[
     "b3d.Compound",
 ]
 ShapeSourceOrIterable: TypeAlias = Union[ShapeSource, list[ShapeSource]]
+
+
 # todo wire needs to be broken to edges..
 
 
@@ -178,3 +180,19 @@ def shape_source_to_compound_brep(shape_source: ShapeSourceOrIterable, trsf: gp_
         "vertex_count": len(vertices),
         "compound_brep": shape_to_brep(transform_shape(compound, trsf)),
     }
+
+
+def clean_props(**kwargs):
+    return {k: v for k, v in kwargs.items() if v is not None}
+
+
+def map_prop(mapping, k, v):
+    match mapping[k]:
+        case (nk, dv):
+            return nk, dv[v]
+        case nk:
+            return nk, v
+
+
+def map_params(mapping: dict[str, Union[str, dict[str, str]]], **kwargs):
+    return dict(map_prop(mapping, k, v) for k, v in kwargs.items() if v is not None)

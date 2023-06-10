@@ -32,6 +32,7 @@ from Path.Tool import Bit, Controller
 from ocp_freecad_cam.api_util import (
     CompoundSource,
     ShapeSource,
+    clean_props,
     extract_topods_shapes,
     shape_source_to_compound_brep,
     shape_to_brep,
@@ -149,6 +150,7 @@ class Job:
             name, sublist = section
             print("-name", name)
             print("-sublist", sublist)
+            print([s.Name for s in sublist])
             print(sublist[0].Path.Commands)
 
             with tempfile.NamedTemporaryFile() as tmp_file:
@@ -365,9 +367,6 @@ class Toolbit:
         for k, v in self.props.items():
             PathUtil.setProperty(self.obj, self.prop_mapping[k], v)
 
-    def clean_props(self, **kwargs):
-        return {k: v for k, v in kwargs.items() if v is not None}
-
 
 class Endmill(Toolbit):
     file_name = "endmill.fcstd"
@@ -400,7 +399,7 @@ class Endmill(Toolbit):
     ):
         super().__init__(tool_name, self.file_name, tool_number=tool_number)
 
-        self.props = self.clean_props(
+        self.props = clean_props(
             chip_load=chip_load,
             flutes=flutes,
             material=material,

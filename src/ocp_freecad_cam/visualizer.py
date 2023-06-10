@@ -104,6 +104,7 @@ def visualize_fc_job(job, inverse_trsf: gp_Trsf):
     visual_commands = []
 
     postlist = buildPostList(job)
+    print("All ops", [o.Name for o in job.Proxy.allOperations()])
     for name, sub_op_list in postlist:
         for op in sub_op_list:
             if hasattr(op, "Path"):

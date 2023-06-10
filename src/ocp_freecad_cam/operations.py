@@ -9,11 +9,18 @@ Developer notes:
 """
 
 from abc import ABC
-from typing import TYPE_CHECKING, Literal
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal, Optional
 
 import Part
 import Path.Base.SetupSheet as PathSetupSheet
+import Path.Base.Util as PathUtil
+import PathScripts.PathUtils as PathUtils
+import sorcery
+from Path.Dressup import Boundary, DogboneII, Tags
 from Path.Op import MillFace, PocketShape, Profile
+
+from ocp_freecad_cam.api_util import clean_props, map_params
 
 if TYPE_CHECKING:
     from api import Job
@@ -30,6 +37,7 @@ class Op(ABC):
         vertex_count: int,
         compound_brep: str,
         name=None,
+        dressups: Optional[list["Dressup"]] = None,
     ):
         self.job = job
         self.n = len(self.job.ops) + 1
@@ -39,12 +47,14 @@ class Op(ABC):
         self.edge_count = edge_count
         self.vertex_count = vertex_count
         self.compound_brep = compound_brep
+        self.dressups = dressups or []
 
     def execute(self, doc):
         base_features = self.create_base_features(doc)
         fc_op = self.create_operation(base_features)
         fc_op.ToolController = self.tool_controller
         fc_op.Proxy.execute(fc_op)
+        self.create_dressups(fc_op)
 
     def create_base_features(self, doc):
         fc_compound = Part.Compound()
@@ -67,6 +77,15 @@ class Op(ABC):
 
     def create_operation(self, base_features):
         raise NotImplemented
+
+    def create_dressups(self, fc_op):
+        base = fc_op
+        for dressup in self.dressups:
+            fc_dressup = dressup.create(base)
+            for k, v in dressup.params:
+                PathUtil.setProperty(fc_dressup, k, v)
+            fc_dressup.Proxy.execute(fc_dressup)
+            base = fc_dressup
 
     @property
     def label(self):
@@ -139,3 +158,89 @@ class PocketOp(AreaOp):
         fc_op.Base = base_features
         fc_op.FinishDepth = self.finish_depth
         return fc_op
+
+
+@dataclass
+class Dressup:
+    factory = None
+    params = None
+
+    def create(self, base):
+        return self.factory.Create(base)
+
+
+class Dogbone(Dressup):
+    factory = DogboneII
+    mapping = {
+        "incision": "Incision",
+        "custom": "Custom",
+        "side": "Side",
+        "style": (
+            "Style",
+            {
+                "dogbone": "Dogbone",
+                "thor": "T-bone horizontal",
+                "tver": "T-bone vertical",
+                "tlong": "T-bone long edge",
+                "tshort": "T-bone short edge",
+            },
+        ),
+    }
+
+    def __init__(
+        self,
+        incision: Optional[Literal["adaptive", "fixed", "custom"]] = None,
+        custom: Optional[float] = None,
+        side: Optional[Literal["left", "right"]] = None,
+        style: Optional[Literal["dogbone", "thor", "tver", "tlong", "tshort"]] = None,
+    ):
+        self.params = map_params(
+            self.mapping, incision=incision, custom=custom, side=side, style=style
+        )
+
+    def create(self, base):
+        # DogboneII has this required code that exists only on the GUI side
+        fc_obj = super().create(base)
+        job = PathUtils.findParentJob(base)
+        job.Proxy.addOperation(fc_obj, base)
+        return fc_obj
+
+
+class Tab(Dressup):
+    factory = Tags
+    mapping = {
+        "angle": "Angle",
+        "height": "Height",
+        "width": "Width",
+        "positions": "Positions",
+        "disabled": "Disabled",
+        "fillet_radius": "Radius",
+        "segmentation_factor": "SegmentationFactor",
+    }
+
+    def __init__(
+        self,
+        angle=None,
+        height=None,
+        width=None,
+        positions=None,
+        disabled=None,
+        fillet_radius=None,
+        segmentation_factor=None,
+    ):
+        self.params = map_params(
+            self.mapping,
+            angle=angle,
+            height=height,
+            width=width,
+            positions=positions,
+            disabled=disabled,
+            fillet_radius=fillet_radius,
+            segmentation_factor=segmentation_factor,
+        )
+
+
+class Boundary(Dressup):
+    factory = Boundary
+
+    # TODO
