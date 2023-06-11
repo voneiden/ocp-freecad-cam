@@ -1,6 +1,7 @@
 import io
 from typing import TypeAlias, Union
 
+import Path.Base.Util as PathUtil
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCP.BRepTools import BRepTools
 from OCP.gp import gp_Trsf
@@ -28,7 +29,9 @@ except ImportError:
 TopoDS_ShapeTypes: TypeAlias = Union[
     TopoDS_Face, TopoDS_Wire, TopoDS_Edge, TopoDS_Vertex, TopoDS_Compound
 ]
-CompoundSource: TypeAlias = Union[TopoDS_Compound, "cq.Compound", "b3d.Compound"]
+CompoundSource: TypeAlias = Union[
+    TopoDS_Compound, "cq.Compound", "b3d.Compound", "cq.Workplane", "b3d.ShapeList"
+]
 ShapeSource: TypeAlias = Union[
     TopoDS_ShapeTypes,
     "cq.Workplane",
@@ -196,3 +199,8 @@ def map_prop(mapping, k, v):
 
 def map_params(mapping: dict[str, Union[str, dict[str, str]]], **kwargs):
     return dict(map_prop(mapping, k, v) for k, v in kwargs.items() if v is not None)
+
+
+def apply_params(fc_obj, params):
+    for k, v in params.items():
+        PathUtil.setProperty(fc_obj, k, v)

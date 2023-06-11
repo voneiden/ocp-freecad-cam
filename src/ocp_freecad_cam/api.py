@@ -16,7 +16,7 @@ TODO: Investigate setting absolute paths for toolbits?
 import io
 import logging
 import tempfile
-from typing import Literal
+from typing import Literal, Optional
 
 import FreeCAD
 import Part
@@ -39,7 +39,7 @@ from ocp_freecad_cam.api_util import (
     transform_shape,
 )
 from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource
-from ocp_freecad_cam.operations import FaceOp, Op, PocketOp, ProfileOp
+from ocp_freecad_cam.operations import DrillOp, FaceOp, Op, PocketOp, ProfileOp, Tab
 from ocp_freecad_cam.visualizer import visualize_fc_job
 
 try:
@@ -141,7 +141,6 @@ class Job:
         postlist = buildPostList(job)
         processor = PostProcessor.load(job.PostProcessor)
 
-        self.doc.saveAs("test2.fcstd")
         print(postlist)
 
         for idx, section in enumerate(postlist):
@@ -156,6 +155,12 @@ class Job:
             with tempfile.NamedTemporaryFile() as tmp_file:
                 gcode = processor.export(sublist, tmp_file.name, "--no-show-editor")
                 return gcode
+
+    def save_fcstd(self, filename="debug.fcstd"):
+        if self._needs_build:
+            self._build()
+
+        self.doc.saveAs(filename)
 
     def _add_op(self, op: Op):
         self._needs_build = True
@@ -174,14 +179,25 @@ class Job:
         tool: "Toolbit",
         *args,
         side: Literal["in", "out"] = "out",
+        tab: Optional[Tab] = None,
         **kwargs,
     ):
         """
-        2.5D profile operation will cut the
-        :param faces:
+        2.5D profile operation will operate on faces, wires and edges.
+        For faces, the operation is done on the outer wire.
+
+        Edges do not have to form a closed loop and they do not have to be
+        on the same Z-level. See https://wiki.freecad.org/Path_Profile
+        for usage notes.
+
+
+        :param shapes: shape(s) to perform this OP on
+        :param tool: tool to use in this OP
         :param args:
+        :param side: Whether the profile is done on the outside or inside of the
+            wire. For open edges this is ignored.
+        :param tab: Use a Tab (Tag) dressup to create tabs in this profile op
         :param kwargs:
-        :return:
         """
         self.set_active()
         side = ProfileOp.kwargs_mapping["side"][side]
@@ -190,18 +206,26 @@ class Job:
             *args,
             side=side,
             tool_controller=tool.tool_controller,
+            dressups=[tab] if tab else [],
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
             **kwargs,
         )
         self._add_op(op)
         return self
 
-    def _profile(self, base):
-        pass
-
     def face(
         self, shapes: ShapeSource, *args, tool: "Toolbit", finish_depth=0.0, **kwargs
     ) -> "Job":
+        """
+        2.5D face operation to clear material from a surface
+
+        :param shapes:
+        :param args:
+        :param tool:
+        :param finish_depth:
+        :param kwargs:
+        :return:
+        """
         self.set_active()
         op = FaceOp(
             self,
@@ -217,12 +241,69 @@ class Job:
     def pocket(
         self, shapes: ShapeSource, *args, tool: "Toolbit", finish_depth=0.0, **kwargs
     ) -> "Job":
+        """
+        2.5D pocket operation.
+
+        https://wiki.freecad.org/Path_Pocket_Shape
+
+        :param shapes:
+        :param args:
+        :param tool:
+        :param finish_depth:
+        :param kwargs:
+        :return:
+        """
         self.set_active()
         op = PocketOp(
             self,
             *args,
             tool_controller=tool.tool_controller,
             finish_depth=finish_depth,
+            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **kwargs,
+        )
+        self._add_op(op)
+        return self
+
+    def drill(
+        self,
+        shapes: ShapeSource,
+        tool: "Toolbit",
+        dwell_time: Optional[float] = None,
+        extra_offset: Optional[float] = None,
+        peck_depth: Optional[float] = None,
+        keep_tool_down: Optional[bool] = None,
+        retract_height: Optional[bool] = None,
+        chip_break_enabled: Optional[bool] = None,
+        **kwargs,
+    ):
+        """
+        Drilling OP works at least on circular edges and cylindrical
+        faces.
+
+
+
+        :param shapes: shapes to perform this op on
+        :param tool: tool to use
+        :param dwell_time: setting this to any value will enable dwell
+        :param extra_offset: extend drilling depth
+        :param peck_depth:
+        :param keep_tool_down:
+        :param retract_height:
+        :param chip_break_enabled:
+        :param kwargs:
+        :return:
+        """
+        self.set_active()
+        op = DrillOp(
+            self,
+            tool_controller=tool.tool_controller,
+            dwell_time=dwell_time,
+            extra_offset=extra_offset,
+            peck_depth=peck_depth,
+            keep_tool_down=keep_tool_down,
+            retract_height=retract_height,
+            chip_break_enabled=chip_break_enabled,
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
             **kwargs,
         )

@@ -100,6 +100,9 @@ def visualize_fc_job(job, inverse_trsf: gp_Trsf):
     """
     params = {"arc_plane": (0, 0, 1)}
     relative = False
+    canned = False
+    canned_r = False
+    canned_z = None
 
     visual_commands = []
 
@@ -147,6 +150,35 @@ def visualize_fc_job(job, inverse_trsf: gp_Trsf):
                         params["arc_plane"] = (0, 1, 0)
                     case "G19":
                         params["arc_plane"] = (1, 0, 0)
+                    case "G81":
+                        # Canned cycle
+                        # FreeCAD canned cycle looks to be in a format like
+                        # G81 X2.000 Y-2.000 Z-2.000 R3.000
+                        # So we issue two commands, first going down to Z
+                        # and then coming back up to R
+                        if not canned:
+                            if not canned_r:
+                                canned_z = params["z"]
+                            canned = True
+
+                        add_command(
+                            visual_commands, LinearVisualCommand, **combined_params
+                        )
+                        if canned_r:
+                            combined_params = {
+                                **combined_params,
+                                "z": combined_params["r"],
+                            }
+                        else:
+                            combined_params = {**combined_params, "z": canned_z}
+                        params = add_command(
+                            visual_commands, LinearVisualCommand, **combined_params
+                        )
+
+                    case "G80":
+                        # End of canned cycle
+                        canned = False
+
                     case "G91":
                         relative = True
                         print("Relative mode on")
@@ -154,7 +186,15 @@ def visualize_fc_job(job, inverse_trsf: gp_Trsf):
                         relative = False
                         print("Relative mode off")
 
+                    case "G98":
+                        # Canned cycle mode, probably not relevant
+                        canned_r = False
+                    case "G99":
+                        canned_r = True
+
                     case _:
+                        if command.Name.startswith("("):
+                            continue
                         print("Unknown gcode", command.Name)
 
     return visual_commands_to_ais(visual_commands, inverse_trsf=inverse_trsf)

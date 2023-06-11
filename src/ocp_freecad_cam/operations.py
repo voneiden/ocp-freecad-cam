@@ -9,18 +9,16 @@ Developer notes:
 """
 
 from abc import ABC
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Optional
 
 import Part
 import Path.Base.SetupSheet as PathSetupSheet
 import Path.Base.Util as PathUtil
 import PathScripts.PathUtils as PathUtils
-import sorcery
 from Path.Dressup import Boundary, DogboneII, Tags
-from Path.Op import MillFace, PocketShape, Profile
+from Path.Op import Drilling, MillFace, PocketShape, Profile
 
-from ocp_freecad_cam.api_util import clean_props, map_params
+from ocp_freecad_cam.api_util import apply_params, map_params
 
 if TYPE_CHECKING:
     from api import Job
@@ -160,7 +158,66 @@ class PocketOp(AreaOp):
         return fc_op
 
 
-@dataclass
+class DrillOp(Op):
+    param_mapping = {
+        "add_tip_length": "AddTipLength",
+        "dwell_time": "DwellTime",
+        "dwell_enabled": "DwellEnabled",
+        "extra_offset": "ExtraOffset",
+        "keep_tool_down": "KeepToolDown",
+        "peck_depth": "PeckDepth",
+        "peck_enabled": "PeckEnabled",
+        "retract_height": "RetractHeight",
+        "retract_mode": "RetractMode",
+        "chip_break_enabled": "chipBreakEnabled",
+    }
+
+    def __init__(
+        self,
+        job: "Job",
+        *args,
+        dwell_time: Optional[float] = None,
+        extra_offset: Optional[float] = None,
+        peck_depth: Optional[float] = None,
+        keep_tool_down: Optional[bool] = None,
+        retract_height: Optional[bool] = None,
+        chip_break_enabled: Optional[bool] = None,
+        **kwargs,
+    ):
+        """
+        Attributes in FreeCAD but not here:
+        * RetractMode is overriden by KeepToolDown
+        * AddTipLength is not used anywhere
+        """
+
+        super().__init__(job, *args, **kwargs)
+        dwell_enabled = None if dwell_time is None else dwell_time > 0
+        peck_enabled = None if peck_depth is None else peck_depth > 0
+
+        self.params = map_params(
+            self.param_mapping,
+            dwell_time=dwell_time,
+            dwell_enabled=dwell_enabled,
+            extra_offset=extra_offset,
+            keep_tool_down=keep_tool_down,
+            peck_depth=peck_depth,
+            peck_enabled=peck_enabled,
+            retract_height=retract_height,
+            chip_break_enabled=chip_break_enabled,
+        )
+
+    def create_operation(self, base_features):
+        name = self.label
+        PathSetupSheet.RegisterOperation(
+            name, Drilling.Create, Drilling.SetupProperties
+        )
+        fc_op = Drilling.Create(name)
+        fc_op.Base = base_features
+        apply_params(fc_op, self.params)
+
+        return fc_op
+
+
 class Dressup:
     factory = None
     params = None
