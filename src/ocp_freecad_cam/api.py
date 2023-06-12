@@ -39,7 +39,15 @@ from ocp_freecad_cam.api_util import (
     transform_shape,
 )
 from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource
-from ocp_freecad_cam.operations import DrillOp, FaceOp, Op, PocketOp, ProfileOp, Tab
+from ocp_freecad_cam.operations import (
+    DrillOp,
+    FaceOp,
+    HelixOp,
+    Op,
+    PocketOp,
+    ProfileOp,
+    Tab,
+)
 from ocp_freecad_cam.visualizer import visualize_fc_job
 
 try:
@@ -304,6 +312,46 @@ class Job:
             keep_tool_down=keep_tool_down,
             retract_height=retract_height,
             chip_break_enabled=chip_break_enabled,
+            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **kwargs,
+        )
+        self._add_op(op)
+        return self
+
+    def helix(
+        self,
+        shapes: ShapeSource,
+        tool: "Toolbit",
+        direction: Optional[Literal["CW", "CCW"]] = None,
+        offset_extra: Optional[float] = None,
+        start_radius: Optional[float] = None,
+        start_side: Optional[Literal["out", "in"]] = None,
+        step_over: Optional[float] = None,
+        **kwargs,
+    ):
+        """
+        Perform a helix plunge.
+
+        :param shapes: circular shapes to perform the op on
+        :param tool: tool to use
+        :param direction: default clockwise helix
+        :param offset_extra: negative value creates a roughing pass followed
+            by a final pass with the original radius
+        :param start_radius: inner radius?
+        :param start_side: define where the op starts when doing multiple passes
+        :param step_over:
+        :param kwargs:
+        :return:
+        """
+        self.set_active()
+        op = HelixOp(
+            self,
+            tool_controller=tool.tool_controller,
+            direction=direction,
+            offset_extra=offset_extra,
+            start_radius=start_radius,
+            start_side=start_side,
+            step_over=step_over,
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
             **kwargs,
         )

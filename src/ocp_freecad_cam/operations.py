@@ -16,7 +16,7 @@ import Path.Base.SetupSheet as PathSetupSheet
 import Path.Base.Util as PathUtil
 import PathScripts.PathUtils as PathUtils
 from Path.Dressup import Boundary, DogboneII, Tags
-from Path.Op import Drilling, MillFace, PocketShape, Profile
+from Path.Op import Drilling, Helix, MillFace, PocketShape, Profile
 
 from ocp_freecad_cam.api_util import apply_params, map_params
 
@@ -186,8 +186,8 @@ class DrillOp(Op):
     ):
         """
         Attributes in FreeCAD but not here:
-        * RetractMode is overriden by KeepToolDown
-        * AddTipLength is not used anywhere
+        * RetractMode is overriden by KeepToolDown in FC code
+        * AddTipLength is not used anywhere?
         """
 
         super().__init__(job, *args, **kwargs)
@@ -212,6 +212,45 @@ class DrillOp(Op):
             name, Drilling.Create, Drilling.SetupProperties
         )
         fc_op = Drilling.Create(name)
+        fc_op.Base = base_features
+        apply_params(fc_op, self.params)
+
+        return fc_op
+
+
+class HelixOp(Op):
+    param_mapping = {
+        "direction": "Direction",
+        "offset_extra": "OffsetExtra",
+        "start_radius": "StartRadius",
+        "start_side": ("StartSide", {"out": "Outside", "in": "Inside"}),
+        "step_over": "StepOver",
+    }
+
+    def __init__(
+        self,
+        job: "Job",
+        direction: Optional[Literal["CW", "CCW"]] = None,
+        offset_extra: Optional[float] = None,
+        start_radius: Optional[float] = None,
+        start_side: Optional[Literal["out", "in"]] = None,
+        step_over: Optional[float] = None,
+        **kwargs,
+    ):
+        super().__init__(job, **kwargs)
+        self.params = map_params(
+            self.param_mapping,
+            direction=direction,
+            offset_extra=offset_extra,
+            start_radius=start_radius,
+            start_side=start_side,
+            step_over=step_over,
+        )
+
+    def create_operation(self, base_features):
+        name = self.label
+        PathSetupSheet.RegisterOperation(name, Helix.Create, Helix.SetupProperties)
+        fc_op = Helix.Create(name)
         fc_op.Base = base_features
         apply_params(fc_op, self.params)
 
