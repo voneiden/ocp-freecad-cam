@@ -5,16 +5,8 @@ from itertools import pairwise
 from typing import Optional
 
 from cadquery.units import DEG2RAD
-from OCP.AIS import (
-    AIS_Circle,
-    AIS_Line,
-    AIS_MultipleConnectedInteractive,
-    AIS_Shape,
-    AIS_WireFrame,
-)
-from OCP.Aspect import Aspect_TOL_SOLID
-from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire
-from OCP.BRepLib import BRepLib
+from OCP.AIS import AIS_Line, AIS_MultipleConnectedInteractive, AIS_Shape
+from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge
 from OCP.GC import GC_MakeArcOfCircle
 from OCP.GCE2d import GCE2d_MakeSegment
 from OCP.Geom import (
@@ -25,16 +17,13 @@ from OCP.Geom import (
     Geom_Surface,
 )
 from OCP.Geom2d import Geom2d_Line
-from OCP.GeomAPI import GeomAPI_ProjectPointOnCurve
 from OCP.gp import gp_Ax2, gp_Ax3, gp_Dir, gp_Dir2d, gp_Pnt, gp_Pnt2d, gp_Trsf, gp_Vec
-from OCP.Graphic3d import Graphic3d_AspectFillArea3d
-from OCP.Prs3d import Prs3d_LineAspect, Prs3d_ShadingAspect
 from OCP.Quantity import Quantity_Color, Quantity_NOC_GREEN, Quantity_NOC_YELLOW
 from OCP.TopoDS import TopoDS_Edge
 from Path.Post.Command import buildPostList
 
 if typing.TYPE_CHECKING:
-    from Path.Main import Job as FC_Job
+    pass
 
 
 class VisualCommand(ABC):
@@ -93,8 +82,7 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
             j = self.j
             k = cz - start.z
             height = k * 2
-            top_center = gp_Pnt(cx, cy, start.z)
-            bottom_center = gp_Pnt(cx, cy, self.z)
+            start_center = gp_Pnt(cx, cy, start.z)
             radius = math.sqrt(self.i**2 + self.j**2)
             full_circle = start.x == self.x and start.y == self.y
 
@@ -108,8 +96,7 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
             j = cy - start.y
             k = self.k
             height = j * 2
-            top_center = gp_Pnt(cx, start.y, cz)
-            bottom_center = gp_Pnt(cx, self.y, cz)
+            start_center = gp_Pnt(cx, start.y, cz)
             radius = math.sqrt(self.i**2 + self.k**2)
             full_circle = start.x == self.x and start.z == self.z
 
@@ -123,16 +110,12 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
             j = self.j
             k = self.k
             height = i * 2
-            top_center = gp_Pnt(start.x, cy, cz)
-            bottom_center = gp_Pnt(self.x, cy, cz)
+            start_center = gp_Pnt(start.x, cy, cz)
             radius = math.sqrt(self.j**2 + self.k**2)
             full_circle = start.y == self.y and start.z == self.z
 
         else:
             raise ValueError(f"Unknown arc plane: {self.arc_plane}")
-
-        # Exberiment with helical approach
-        start_point = gp_Pnt(start.x, start.y, start.z)
 
         c = gp_Pnt(cx, cy, cz)
         if height:
@@ -148,7 +131,7 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
                 pitch,
                 height,
                 radius,
-                top_center,
+                start_center,
                 gp_Dir(*self.arc_plane),
                 lefthand=not self.clockwise,
             )
