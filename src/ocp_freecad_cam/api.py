@@ -532,6 +532,7 @@ class Endmill(Toolbit):
             chip_load=chip_load,
             flutes=flutes,
             material=material,
+            spindle_direction=spindle_direction,
             cutting_edge_height=cutting_edge_height,
             diameter=diameter,
             length=length,
@@ -541,3 +542,48 @@ class Endmill(Toolbit):
 
 class Ballnose(Endmill):
     file_name = "ballnose.fcstd"
+
+
+class VBit(Endmill):
+    file_name = "v-bit.fcstd"
+
+    prop_mapping = {
+        **Endmill.prop_mapping,
+        "tip_angle": "CuttingEdgeAngle",
+        "tip_diameter": "TipDiameter",
+    }
+
+    def __init__(
+        self,
+        tool_name: str = "",
+        # Generic
+        chip_load=None,
+        flutes=None,
+        material=None,
+        spindle_direction=None,
+        # Bit specific
+        cutting_edge_height=None,
+        diameter=None,
+        length=None,
+        shank_diameter=None,
+        tip_angle=None,
+        tip_diameter=None,
+        # TC
+        tool_number: int = 1,
+    ):
+        self.props = clean_props(
+            chip_load=chip_load,
+            flutes=flutes,
+            material=material,
+            spindle_direction=spindle_direction,
+            cutting_edge_height=cutting_edge_height,
+            diameter=diameter,
+            length=length,
+            shank_diameter=shank_diameter,
+            tip_angle=tip_angle,
+            tip_diameter=tip_diameter,
+        )
+
+
+class Bullnose(Endmill):
+    pass
