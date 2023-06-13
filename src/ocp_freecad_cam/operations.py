@@ -240,6 +240,7 @@ class PocketOp(AreaOp):
         super().__init__(*args, **kwargs)
         self.params = map_params(
             self.param_mapping,
+            finish_depth=finish_depth,
             pattern=pattern,
             cut_mode=cut_mode,
             extra_offset=extra_offset,
