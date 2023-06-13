@@ -17,7 +17,8 @@ import Path.Base.SetupSheet as PathSetupSheet
 import Path.Base.Util as PathUtil
 import PathScripts.PathUtils as PathUtils
 from Path.Dressup import Boundary, DogboneII, Tags
-from Path.Op import Drilling, Helix, MillFace, PocketShape, Profile
+from Path.Op import Deburr, Drilling, Helix, MillFace, PocketShape, Profile
+from Path.Op import Vcarve as FCVCarve
 
 from ocp_freecad_cam.api_util import ParamMapping, apply_params, map_params
 
@@ -363,6 +364,42 @@ class HelixOp(Op):
             start_side=start_side,
             step_over=step_over,
         )
+
+
+# class Engrave(Op):
+#    fc_module = FCEngrave
+
+
+class DeburrOp(Op):
+    fc_module = Deburr
+    param_mapping = {
+        "width": "Width",
+        "extra_depth": "ExtraDepth",
+        "direction": ("Direction", {"cw": "CW", "ccw": "CCW"}),
+        "entry_point": "EntryPoint",
+    }
+
+    def __init__(
+        self,
+        *args,
+        width: float,
+        extra_depth: float,
+        direction: Literal["cw", "ccw"],
+        entry_point: int,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.params = map_params(
+            self.param_mapping,
+            width=width,
+            extra_depth=extra_depth,
+            direction=direction,
+            entry_point=entry_point,
+        )
+
+
+class VCarve(Op):
+    fc_module = FCVCarve
 
 
 class Dressup:

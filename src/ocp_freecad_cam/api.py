@@ -40,6 +40,7 @@ from ocp_freecad_cam.api_util import (
 )
 from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource
 from ocp_freecad_cam.operations import (
+    DeburrOp,
     Dressup,
     DrillOp,
     FaceOp,
@@ -432,6 +433,30 @@ class Job:
             tool_controller=tool.tool_controller,
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
             **kwargs,
+        )
+        self._add_op(op)
+        return self
+
+    def deburr(
+        self,
+        shapes: ShapeSource,
+        tool: "Toolbit",
+        *,
+        width: float | str = "1 mm",
+        extra_depth: float | str = "0.5 mm",
+        direction: Literal["cw", "ccw"] = "cw",
+        entry_point: int = 0,
+    ):
+        self.set_active()
+        op = DeburrOp(
+            self,
+            width=width,
+            extra_depth=extra_depth,
+            direction=direction,
+            entry_point=entry_point,
+            # Op
+            tool_controller=tool.tool_controller,
+            **shape_source_to_compound_brep(shapes, self._forward_trsf),
         )
         self._add_op(op)
         return self
