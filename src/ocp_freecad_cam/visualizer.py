@@ -5,7 +5,7 @@ from itertools import pairwise
 from typing import Optional
 
 from cadquery.units import DEG2RAD
-from OCP.AIS import AIS_Line, AIS_MultipleConnectedInteractive, AIS_Shape
+from OCP.AIS import AIS_Circle, AIS_Line, AIS_MultipleConnectedInteractive, AIS_Shape
 from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge
 from OCP.GC import GC_MakeArcOfCircle
 from OCP.GCE2d import GCE2d_MakeSegment
@@ -152,12 +152,15 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
         start_point = gp_Pnt(start.x, start.y, start.z)
         end_point = gp_Pnt(self.x, self.y, self.z)
 
-        curve = GC_MakeArcOfCircle(
-            geom_circle.Circ(), start_point, end_point, True
-        ).Value()
-        shape = AIS_Shape(BRepBuilderAPI_MakeEdge(curve).Edge())
-        shape.SetColor(Quantity_Color(Quantity_NOC_YELLOW))
-        return shape
+        if start_point.IsEqual(end_point, 1e-4):
+            return AIS_Circle(geom_circle)
+        else:
+            curve = GC_MakeArcOfCircle(
+                geom_circle.Circ(), start_point, end_point, True
+            ).Value()
+            shape = AIS_Shape(BRepBuilderAPI_MakeEdge(curve).Edge())
+            shape.SetColor(Quantity_Color(Quantity_NOC_YELLOW))
+            return shape
 
 
 def makeHelix(
