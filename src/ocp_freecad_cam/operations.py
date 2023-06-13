@@ -28,7 +28,7 @@ class Op(ABC):
     def __init__(
         self,
         job: "Job",
-        *args,
+        *,
         tool_controller,
         face_count: int,
         edge_count: int,
@@ -103,23 +103,67 @@ class AreaOp(Op, ABC):
 
 
 class ProfileOp(AreaOp):
-    kwargs_mapping = {
-        "side": {
-            "in": "Inside",
-            "out": "Outside",
-        }
+    param_mapping = {
+        "side": (
+            "Side",
+            {
+                "in": "Inside",
+                "out": "Outside",
+            },
+        ),
+        "direction": (
+            "Direction",
+            {
+                "cw": "CW",
+                "ccw": "CCW",
+            },
+        ),
+        "handle_multiple_features": (
+            "HandleMultipleFeatures",
+            {
+                "collectively": "Collectively",
+                "individually": "Individually",
+            },
+        ),
+        "offset_extra": "OffsetExtra",
+        "use_comp": "UseComp",
+        "process_circles": "processCircles",
+        "process_holes": "processHoles",
+        "process_perimeter": "processPerimeter",
     }
 
-    def __init__(self, job: "Job", *args, side: Literal["Inside", "Outside"], **kwargs):
-        super().__init__(job, *args, **kwargs)
-        self.side = side
+    def __init__(
+        self,
+        *args,
+        side: Literal["in", "out"],
+        direction: Literal["cw", "ccw"],
+        handle_multiple_features: Literal["collectively", "individually"],
+        offset_extra: float,
+        use_comp: bool,
+        process_circles: bool,
+        process_holes: bool,
+        process_perimeter: bool,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.params = map_params(
+            self.param_mapping,
+            side=side,
+            direction=direction,
+            handle_multiple_features=handle_multiple_features,
+            offset_extra=offset_extra,
+            use_comp=use_comp,
+            process_circles=process_circles,
+            process_holes=process_holes,
+            process_perimeter=process_perimeter,
+        )
 
     def create_operation(self, base_features):
         name = self.label
         PathSetupSheet.RegisterOperation(name, Profile.Create, Profile.SetupProperties)
         fc_op = Profile.Create(name)
         fc_op.Base = base_features
-        fc_op.Side = self.side
+        apply_params(fc_op, self.params)
         return fc_op
 
 

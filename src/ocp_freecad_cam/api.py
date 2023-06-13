@@ -39,15 +39,7 @@ from ocp_freecad_cam.api_util import (
     transform_shape,
 )
 from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource
-from ocp_freecad_cam.operations import (
-    DrillOp,
-    FaceOp,
-    HelixOp,
-    Op,
-    PocketOp,
-    ProfileOp,
-    Tab,
-)
+from ocp_freecad_cam.operations import DrillOp, FaceOp, HelixOp, Op, PocketOp, ProfileOp
 from ocp_freecad_cam.visualizer import visualize_fc_job
 
 try:
@@ -185,10 +177,17 @@ class Job:
         self,
         shapes: ShapeSource,
         tool: "Toolbit",
-        *args,
-        side: Literal["in", "out"] = "out",
-        tab: Optional[Tab] = None,
-        **kwargs,
+        *,
+        side: Literal["out", "in", "mid"] = "out",
+        direction: Literal["cw", "ccw"] = "cw",
+        handle_multiple_features: Literal[
+            "collectively", "individually"
+        ] = "collectively",
+        offset_extra: float = 0.0,
+        circles: bool = False,
+        holes: bool = False,
+        perimeter: bool = True,
+        dressups: list["Dressup"] = None,
     ):
         """
         2.5D profile operation will operate on faces, wires and edges.
@@ -198,25 +197,45 @@ class Job:
         on the same Z-level. See https://wiki.freecad.org/Path_Profile
         for usage notes.
 
-
-        :param shapes: shape(s) to perform this OP on
-        :param tool: tool to use in this OP
-        :param args:
-        :param side: Whether the profile is done on the outside or inside of the
-            wire. For open edges this is ignored.
-        :param tab: Use a Tab (Tag) dressup to create tabs in this profile op
-        :param kwargs:
+        :param shapes: Shape(s) to perform this OP on
+        :param tool: Tool to use in this OP
+        :param side: Defines whether cutter radius compensation is applied
+            on the inside or the outside of the perimeter (outer wire).
+            Irrelevant for open edges.
+        :param direction: Defines the direction of travel (clockwise or
+            counterclockwise).
+        :param handle_multiple_features: Defines whether to combine features
+            or handle them as individual sub operations.
+        :param offset_extra: Additional offset.
+        :param circles: Faces: profile circular holes (inner wires).
+        :param holes: Faces: profile non-circular holes (inner wires).
+        :param perimeter: Faces: mill the perimeter (outer wire).
+        :param dressups: Define dressups to use in this OP. For example
+            Tab (tags) or Dogbone.
         """
+
+        use_comp = side != "mid"
+        if not use_comp:
+            # Side is irrelevant if we're not using cutter radius compensation
+            # Set to some valid value
+            side = "out"
+
         self.set_active()
-        side = ProfileOp.kwargs_mapping["side"][side]
         op = ProfileOp(
             self,
-            *args,
+            # Profile settings
             side=side,
+            direction=direction,
+            handle_multiple_features=handle_multiple_features,
+            offset_extra=offset_extra,
+            use_comp=use_comp,
+            process_circles=circles,
+            process_holes=holes,
+            process_perimeter=perimeter,
+            # Op settings
             tool_controller=tool.tool_controller,
-            dressups=[tab] if tab else [],
+            dressups=dressups or [],
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
-            **kwargs,
         )
         self._add_op(op)
         return self
