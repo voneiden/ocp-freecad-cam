@@ -197,7 +197,10 @@ def map_prop(mapping, k, v):
             return nk, v
 
 
-def map_params(mapping: dict[str, Union[str, dict[str, str]]], **kwargs):
+ParamMapping: TypeAlias = dict[str, Union[str, dict[str, str]]]
+
+
+def map_params(mapping: ParamMapping, **kwargs):
     return dict(map_prop(mapping, k, v) for k, v in kwargs.items() if v is not None)
 
 

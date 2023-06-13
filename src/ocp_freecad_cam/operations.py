@@ -9,6 +9,7 @@ Developer notes:
 """
 
 from abc import ABC
+from types import ModuleType
 from typing import TYPE_CHECKING, Literal, Optional
 
 import Part
@@ -18,13 +19,16 @@ import PathScripts.PathUtils as PathUtils
 from Path.Dressup import Boundary, DogboneII, Tags
 from Path.Op import Drilling, Helix, MillFace, PocketShape, Profile
 
-from ocp_freecad_cam.api_util import apply_params, map_params
+from ocp_freecad_cam.api_util import ParamMapping, apply_params, map_params
 
 if TYPE_CHECKING:
     from api import Job
 
 
 class Op(ABC):
+    fc_module: ModuleType
+    params: ParamMapping
+
     def __init__(
         self,
         job: "Job",
@@ -74,7 +78,14 @@ class Op(ABC):
         return base_features
 
     def create_operation(self, base_features):
-        raise NotImplemented
+        name = self.label
+        PathSetupSheet.RegisterOperation(
+            name, self.fc_module.Create, self.fc_module.SetupProperties
+        )
+        fc_op = self.fc_module.Create(name)
+        fc_op.Base = base_features
+        apply_params(fc_op, self.params)
+        return fc_op
 
     def create_dressups(self, fc_op):
         base = fc_op
@@ -103,6 +114,7 @@ class AreaOp(Op, ABC):
 
 
 class ProfileOp(AreaOp):
+    fc_module = Profile
     param_mapping = {
         "side": (
             "Side",
@@ -158,16 +170,10 @@ class ProfileOp(AreaOp):
             process_perimeter=process_perimeter,
         )
 
-    def create_operation(self, base_features):
-        name = self.label
-        PathSetupSheet.RegisterOperation(name, Profile.Create, Profile.SetupProperties)
-        fc_op = Profile.Create(name)
-        fc_op.Base = base_features
-        apply_params(fc_op, self.params)
-        return fc_op
-
 
 class FaceOp(AreaOp):
+    fc_module = MillFace
+
     def __init__(self, *args, finish_depth=0.0, **kwargs):
         super().__init__(*args, **kwargs)
         self.finish_depth = finish_depth
@@ -185,26 +191,72 @@ class FaceOp(AreaOp):
 
 
 class PocketOp(AreaOp):
-    """2.5D pocket op"""
+    fc_module = PocketShape
+    param_mapping = {
+        "finish_depth": "FinishDepth",
+        "pattern": (
+            "OffsetPattern",
+            {
+                "zigzag": "ZigZag",
+                "offset": "Offset",
+                "zigzag_offset": "ZigZagOffset",
+                "line": "Line",
+                "grid": "Grid,",
+            },
+        ),
+        "cut_mode": ("CutMode", {"climb": "Climb", "conventional": "Conventional"}),
+        "extra_offset": "ExtraOffset",
+        "keep_tool_down": "KeepToolDown",
+        "min_travel": "MinTravel",
+        "pocket_last_stepover": "PocketLastStepOver",
+        "start_at": (
+            "StartAt",
+            {
+                "center": "Center",
+                "edge": "Edge",
+            },
+        ),
+        "step_over": "StepOver",
+        "use_outline": "UseOutline",
+        "zigzag_angle": "ZigZagAngle",
+    }
 
-    def __init__(self, *args, finish_depth=0.0, **kwargs):
+    def __init__(
+        self,
+        *args,
+        finish_depth: float,
+        pattern: Literal["zigzag", "offset", "zigzag_offset", "line", "grid"],
+        cut_mode: Literal["climb", "conventional"],
+        extra_offset: float,
+        keep_tool_down: bool,
+        min_travel: bool,
+        pocket_last_stepover: float,
+        start_at: Literal["center", "edge"],
+        step_over: float,
+        use_outline: bool,
+        zigzag_angle: float,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
-        self.finish_depth = finish_depth
-
-    def create_operation(self, base_features):
-        name = self.label
-        PathSetupSheet.RegisterOperation(
-            name, PocketShape.Create, PocketShape.SetupProperties
+        self.params = map_params(
+            self.param_mapping,
+            pattern=pattern,
+            cut_mode=cut_mode,
+            extra_offset=extra_offset,
+            keep_tool_down=keep_tool_down,
+            min_travel=min_travel,
+            pocket_last_stepover=pocket_last_stepover,
+            start_at=start_at,
+            step_over=step_over,
+            use_outline=use_outline,
+            zigzag_angle=zigzag_angle,
         )
-        fc_op = PocketShape.Create(name)
-        fc_op.Base = base_features
-        fc_op.FinishDepth = self.finish_depth
-        return fc_op
 
 
 class DrillOp(Op):
+    fc_module = Drilling
+
     param_mapping = {
-        "add_tip_length": "AddTipLength",
         "dwell_time": "DwellTime",
         "dwell_enabled": "DwellEnabled",
         "extra_offset": "ExtraOffset",
@@ -212,20 +264,18 @@ class DrillOp(Op):
         "peck_depth": "PeckDepth",
         "peck_enabled": "PeckEnabled",
         "retract_height": "RetractHeight",
-        "retract_mode": "RetractMode",
         "chip_break_enabled": "chipBreakEnabled",
     }
 
     def __init__(
         self,
-        job: "Job",
         *args,
-        dwell_time: Optional[float] = None,
-        extra_offset: Optional[float] = None,
-        peck_depth: Optional[float] = None,
-        keep_tool_down: Optional[bool] = None,
-        retract_height: Optional[bool] = None,
-        chip_break_enabled: Optional[bool] = None,
+        dwell_time: Optional[float],
+        extra_offset: Optional[float],
+        peck_depth: Optional[float],
+        keep_tool_down: Optional[bool],
+        retract_height: Optional[bool],
+        chip_break_enabled: Optional[bool],
         **kwargs,
     ):
         """
@@ -234,7 +284,7 @@ class DrillOp(Op):
         * AddTipLength is not used anywhere?
         """
 
-        super().__init__(job, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         dwell_enabled = None if dwell_time is None else dwell_time > 0
         peck_enabled = None if peck_depth is None else peck_depth > 0
 

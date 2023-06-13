@@ -39,7 +39,15 @@ from ocp_freecad_cam.api_util import (
     transform_shape,
 )
 from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource
-from ocp_freecad_cam.operations import DrillOp, FaceOp, HelixOp, Op, PocketOp, ProfileOp
+from ocp_freecad_cam.operations import (
+    Dressup,
+    DrillOp,
+    FaceOp,
+    HelixOp,
+    Op,
+    PocketOp,
+    ProfileOp,
+)
 from ocp_freecad_cam.visualizer import visualize_fc_job
 
 try:
@@ -191,9 +199,8 @@ class Job:
     ):
         """
         2.5D profile operation will operate on faces, wires and edges.
-        For faces, the operation is done on the outer wire.
 
-        Edges do not have to form a closed loop and they do not have to be
+        Edges do not have to form a closed loop, and they do not have to be
         on the same Z-level. See https://wiki.freecad.org/Path_Profile
         for usage notes.
 
@@ -266,28 +273,64 @@ class Job:
         return self
 
     def pocket(
-        self, shapes: ShapeSource, *args, tool: "Toolbit", finish_depth=0.0, **kwargs
+        self,
+        shapes: ShapeSource,
+        tool: "Toolbit",
+        *,
+        finish_depth: float = 0,
+        pattern: Literal[
+            "zigzag", "offset", "zigzag_offset", "line", "grid"
+        ] = "zigzag",
+        cut_mode: Literal["climb", "conventional"] = "climb",
+        extra_offset: float = 0,
+        keep_tool_down: bool = False,
+        min_travel: bool = False,
+        pocket_last_stepover: float = 0,
+        start_at: Literal["center", "edge"] = "center",
+        step_over: float = 100,
+        use_outline: bool = False,
+        zigzag_angle: float = 45.0,
+        dressups: list[Dressup] = None,
     ) -> "Job":
         """
         2.5D pocket operation.
 
         https://wiki.freecad.org/Path_Pocket_Shape
 
-        :param shapes:
-        :param args:
-        :param tool:
-        :param finish_depth:
-        :param kwargs:
+        :param shapes: Shape(s) to perform this OP on.
+        :param tool: Tool to use in this OP.
+        :param finish_depth: Final pass depth, 0 to disable.
+        :param pattern: Pocket tool path pattern.
+        :param cut_mode: Climb/Conventional selection.
+        :param extra_offset: Offset the operation boundaries.
+        :param keep_tool_down: Attempts to avoid unnecessary retractions
+        :param min_travel: Use 3D sorting of path
+        :param pocket_last_stepover: ?
+        :param start_at: Where the pocketing operation starts (inside-out vs
+            outside-in)
+        :param step_over: Step over by percentage of cutter diameter
+        :param use_outline: Use outline of base geometry
+        :param zigzag_angle: Valid when zigzagging
+        :param dressups: Dressup operations
         :return:
         """
         self.set_active()
         op = PocketOp(
             self,
-            *args,
             tool_controller=tool.tool_controller,
             finish_depth=finish_depth,
+            pattern=pattern,
+            cut_mode=cut_mode,
+            extra_offset=extra_offset,
+            keep_tool_down=keep_tool_down,
+            min_travel=min_travel,
+            pocket_last_stepover=pocket_last_stepover,
+            start_at=start_at,
+            step_over=step_over,
+            use_outline=use_outline,
+            zigzag_angle=zigzag_angle,
+            dressups=dressups or [],
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
-            **kwargs,
         )
         self._add_op(op)
         return self
@@ -307,8 +350,6 @@ class Job:
         """
         Drilling OP works at least on circular edges and cylindrical
         faces.
-
-
 
         :param shapes: shapes to perform this op on
         :param tool: tool to use
