@@ -571,6 +571,7 @@ class VBit(Endmill):
         # TC
         tool_number: int = 1,
     ):
+        super().__init__(tool_name, self.file_name, tool_number=tool_number)
         self.props = clean_props(
             chip_load=chip_load,
             flutes=flutes,
