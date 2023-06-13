@@ -341,11 +341,11 @@ class Job:
         shapes: ShapeSource,
         tool: "Toolbit",
         dwell_time: Optional[float] = None,
-        extra_offset: Optional[float] = None,
+        extra_offset: Optional[Literal["none", "1x", "2x"]] = "none",
         peck_depth: Optional[float] = None,
-        keep_tool_down: Optional[bool] = None,
+        keep_tool_down: Optional[bool] = False,
         retract_height: Optional[bool] = None,
-        chip_break_enabled: Optional[bool] = None,
+        chip_break_enabled: Optional[bool] = False,
         **kwargs,
     ):
         """

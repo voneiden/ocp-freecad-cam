@@ -259,7 +259,10 @@ class DrillOp(Op):
     param_mapping = {
         "dwell_time": "DwellTime",
         "dwell_enabled": "DwellEnabled",
-        "extra_offset": "ExtraOffset",
+        "extra_offset": (
+            "ExtraOffset",
+            {"none": "None", "1x": "Drill Tip", "2x": "2x Drill Tip"},
+        ),
         "keep_tool_down": "KeepToolDown",
         "peck_depth": "PeckDepth",
         "peck_enabled": "PeckEnabled",
@@ -299,17 +302,6 @@ class DrillOp(Op):
             retract_height=retract_height,
             chip_break_enabled=chip_break_enabled,
         )
-
-    def create_operation(self, base_features):
-        name = self.label
-        PathSetupSheet.RegisterOperation(
-            name, Drilling.Create, Drilling.SetupProperties
-        )
-        fc_op = Drilling.Create(name)
-        fc_op.Base = base_features
-        apply_params(fc_op, self.params)
-
-        return fc_op
 
 
 class HelixOp(Op):
