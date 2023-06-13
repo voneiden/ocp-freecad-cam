@@ -317,7 +317,6 @@ class Job:
         self.set_active()
         op = PocketOp(
             self,
-            tool_controller=tool.tool_controller,
             finish_depth=finish_depth,
             pattern=pattern,
             cut_mode=cut_mode,
@@ -329,6 +328,8 @@ class Job:
             step_over=step_over,
             use_outline=use_outline,
             zigzag_angle=zigzag_angle,
+            # OP settings
+            tool_controller=tool.tool_controller,
             dressups=dressups or [],
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
         )
@@ -382,11 +383,12 @@ class Job:
         self,
         shapes: ShapeSource,
         tool: "Toolbit",
-        direction: Optional[Literal["CW", "CCW"]] = None,
-        offset_extra: Optional[float] = None,
-        start_radius: Optional[float] = None,
-        start_side: Optional[Literal["out", "in"]] = None,
-        step_over: Optional[float] = None,
+        *,
+        direction: Optional[Literal["cw", "ccw"]] = "cw",
+        offset_extra: Optional[float] = 0,
+        start_radius: Optional[float] = 0,
+        start_side: Optional[Literal["out", "in"]] = "out",
+        step_over: Optional[float] = 50,
         **kwargs,
     ):
         """
@@ -399,19 +401,20 @@ class Job:
             by a final pass with the original radius
         :param start_radius: inner radius?
         :param start_side: define where the op starts when doing multiple passes
-        :param step_over:
+        :param step_over: percentage of tool diameter to step over
         :param kwargs:
         :return:
         """
         self.set_active()
         op = HelixOp(
             self,
-            tool_controller=tool.tool_controller,
             direction=direction,
             offset_extra=offset_extra,
             start_radius=start_radius,
             start_side=start_side,
             step_over=step_over,
+            # Op
+            tool_controller=tool.tool_controller,
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
             **kwargs,
         )

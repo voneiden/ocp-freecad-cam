@@ -313,8 +313,9 @@ class DrillOp(Op):
 
 
 class HelixOp(Op):
+    fc_module = Helix
     param_mapping = {
-        "direction": "Direction",
+        "direction": ("Direction", {"cw": "CW", "ccw": "CCW"}),
         "offset_extra": "OffsetExtra",
         "start_radius": "StartRadius",
         "start_side": ("StartSide", {"out": "Outside", "in": "Inside"}),
@@ -323,15 +324,15 @@ class HelixOp(Op):
 
     def __init__(
         self,
-        job: "Job",
-        direction: Optional[Literal["CW", "CCW"]] = None,
-        offset_extra: Optional[float] = None,
-        start_radius: Optional[float] = None,
-        start_side: Optional[Literal["out", "in"]] = None,
-        step_over: Optional[float] = None,
+        *args,
+        direction: Optional[Literal["cw", "ccw"]],
+        offset_extra: Optional[float],
+        start_radius: Optional[float],
+        start_side: Optional[Literal["out", "in"]],
+        step_over: Optional[float],
         **kwargs,
     ):
-        super().__init__(job, **kwargs)
+        super().__init__(*args, **kwargs)
         self.params = map_params(
             self.param_mapping,
             direction=direction,
@@ -340,15 +341,6 @@ class HelixOp(Op):
             start_side=start_side,
             step_over=step_over,
         )
-
-    def create_operation(self, base_features):
-        name = self.label
-        PathSetupSheet.RegisterOperation(name, Helix.Create, Helix.SetupProperties)
-        fc_op = Helix.Create(name)
-        fc_op.Base = base_features
-        apply_params(fc_op, self.params)
-
-        return fc_op
 
 
 class Dressup:
