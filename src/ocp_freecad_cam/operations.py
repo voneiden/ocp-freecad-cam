@@ -173,21 +173,50 @@ class ProfileOp(AreaOp):
 
 class FaceOp(AreaOp):
     fc_module = MillFace
+    param_mapping = {
+        "finish_depth": "FinishDepth",
+        "boundary": (
+            "BoundaryShape",
+            {
+                "boundbox": "Boundbox",
+                "face": "Face Region",
+                "perimeter": "Perimeter",
+                "stock": "Stock",
+            },
+        ),
+        "clear_edges": "ClearEdges",
+        "exclude_raised": "ExcludeRaisedAreas",
+        "pattern": (
+            "OffsetPattern",
+            {
+                "zigzag": "ZigZag",
+                "offset": "Offset",
+                "zigzag_offset": "ZigZagOffset",
+                "line": "Line",
+                "grid": "Grid,",
+            },
+        ),
+    }
 
-    def __init__(self, *args, finish_depth=0.0, **kwargs):
+    def __init__(
+        self,
+        *args,
+        finish_depth: float,
+        boundary: Literal["boundbox", "face", "perimeter", "stock"],
+        clear_edges: bool,
+        exclude_raised: bool,
+        pattern: Literal["zigzag", "offset", "zigzag_offset", "line", "grid"],
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
-        self.finish_depth = finish_depth
-
-    def create_operation(self, base_features):
-        name = self.label
-        PathSetupSheet.RegisterOperation(
-            name, MillFace.Create, MillFace.SetupProperties
+        self.params = map_params(
+            self.param_mapping,
+            finish_depth=finish_depth,
+            boundary=boundary,
+            clear_edges=clear_edges,
+            exclude_raised=exclude_raised,
+            pattern=pattern,
         )
-        fc_op = MillFace.Create(name)
-        fc_op.Base = base_features
-        fc_op.BoundaryShape = "Stock"
-        fc_op.FinishDepth = self.finish_depth
-        return fc_op
 
 
 class PocketOp(AreaOp):

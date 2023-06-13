@@ -248,24 +248,39 @@ class Job:
         return self
 
     def face(
-        self, shapes: ShapeSource, *args, tool: "Toolbit", finish_depth=0.0, **kwargs
+        self,
+        shapes: ShapeSource,
+        tool: "Toolbit",
+        *,
+        finish_depth: float,
+        boundary: Literal["boundbox", "face", "perimeter", "stock"],
+        clear_edges: bool,
+        exclude_raised: bool,
+        pattern: Literal["zigzag", "offset", "zigzag_offset", "line", "grid"],
+        **kwargs,
     ) -> "Job":
         """
         2.5D face operation to clear material from a surface
 
         :param shapes:
-        :param args:
         :param tool:
         :param finish_depth:
+        :param boundary:
+        :param clear_edges:
+        :param exclude_raised:
+        :param pattern:
         :param kwargs:
         :return:
         """
         self.set_active()
         op = FaceOp(
             self,
-            *args,
-            tool_controller=tool.tool_controller,
             finish_depth=finish_depth,
+            boundary=boundary,
+            clear_edges=clear_edges,
+            exclude_raised=exclude_raised,
+            pattern=pattern,
+            tool_controller=tool.tool_controller,
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
             **kwargs,
         )
