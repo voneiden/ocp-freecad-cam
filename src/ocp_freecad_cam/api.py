@@ -48,6 +48,7 @@ from ocp_freecad_cam.operations import (
     Op,
     PocketOp,
     ProfileOp,
+    VCarveOp,
 )
 from ocp_freecad_cam.visualizer import visualize_fc_job
 
@@ -241,7 +242,7 @@ class Job:
             process_holes=holes,
             process_perimeter=perimeter,
             # Op settings
-            tool_controller=tool.tool_controller,
+            tool=tool,
             dressups=dressups or [],
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
         )
@@ -281,7 +282,7 @@ class Job:
             clear_edges=clear_edges,
             exclude_raised=exclude_raised,
             pattern=pattern,
-            tool_controller=tool.tool_controller,
+            tool=tool,
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
             **kwargs,
         )
@@ -345,7 +346,7 @@ class Job:
             use_outline=use_outline,
             zigzag_angle=zigzag_angle,
             # OP settings
-            tool_controller=tool.tool_controller,
+            tool=tool,
             dressups=dressups or [],
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
         )
@@ -382,7 +383,7 @@ class Job:
         self.set_active()
         op = DrillOp(
             self,
-            tool_controller=tool.tool_controller,
+            tool=tool,
             dwell_time=dwell_time,
             extra_offset=extra_offset,
             peck_depth=peck_depth,
@@ -430,7 +431,7 @@ class Job:
             start_side=start_side,
             step_over=step_over,
             # Op
-            tool_controller=tool.tool_controller,
+            tool=tool,
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
             **kwargs,
         )
@@ -455,7 +456,35 @@ class Job:
             direction=direction,
             entry_point=entry_point,
             # Op
-            tool_controller=tool.tool_controller,
+            tool=tool,
+            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+        )
+        self._add_op(op)
+        return self
+
+    def v_carve(
+        self,
+        shapes: ShapeSource,
+        tool: "Toolbit",
+        *,
+        discretize: float = 0.01,
+        colinear: float = 10.0,
+    ):
+        """
+        V-Carve based on voronoi diagrams
+        :param shapes:
+        :param tool:
+        :param discretize: Try a smaller value if getting too many retracts.
+        :param colinear:
+        :return:
+        """
+        self.set_active()
+        op = VCarveOp(
+            self,
+            discretize=discretize,
+            colinear=colinear,
+            # Op
+            tool=tool,
             **shape_source_to_compound_brep(shapes, self._forward_trsf),
         )
         self._add_op(op)
@@ -578,13 +607,12 @@ class Toolbit:
         self.obj = None
         self._tool_controller = None
 
-    @property
-    def tool_controller(self):
+    def tool_controller(self, job):
         if self._tool_controller is None:
-            self.create()
+            self.create(job)
         return self._tool_controller
 
-    def create(self):
+    def create(self, job):
         tool_shape = Bit.findToolShape(self.tool_file_name, self.path)
         if not tool_shape:
             raise ValueError(
@@ -595,6 +623,8 @@ class Toolbit:
         self._tool_controller = Controller.Create(
             f"TC: {self.tool_name}", tool=self.obj, toolNumber=self.tool_number
         )
+
+        job.addToolController(self._tool_controller)
 
         for k, v in self.props.items():
             PathUtil.setProperty(self.obj, self.prop_mapping[k], v)

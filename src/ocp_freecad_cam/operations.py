@@ -34,7 +34,7 @@ class Op(ABC):
         self,
         job: "Job",
         *,
-        tool_controller,
+        tool,
         face_count: int,
         edge_count: int,
         vertex_count: int,
@@ -45,7 +45,7 @@ class Op(ABC):
         self.job = job
         self.n = len(self.job.ops) + 1
         self.name = name
-        self.tool_controller = tool_controller
+        self.tool = tool
         self.face_count = face_count
         self.edge_count = edge_count
         self.vertex_count = vertex_count
@@ -54,8 +54,9 @@ class Op(ABC):
 
     def execute(self, doc):
         base_features = self.create_base_features(doc)
+        op_tool_controller = self.tool.tool_controller(self.job.fc_job)
         fc_op = self.create_operation(base_features)
-        fc_op.ToolController = self.tool_controller
+        fc_op.ToolController = op_tool_controller
         fc_op.Proxy.execute(fc_op)
         self.create_dressups(fc_op)
 
@@ -398,8 +399,18 @@ class DeburrOp(Op):
         )
 
 
-class VCarve(Op):
+class VCarveOp(Op):
     fc_module = FCVCarve
+    param_mapping = {
+        "discretize": "Discretize",
+        "colinear": "Colinear",
+    }
+
+    def __init__(self, *args, discretize: float, colinear: float, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.params = map_params(
+            self.param_mapping, discretize=discretize, colinear=colinear
+        )
 
 
 class Dressup:
