@@ -20,7 +20,7 @@ from Path.Dressup import Boundary, DogboneII, Tags
 from Path.Op import Deburr, Drilling, Helix, MillFace, PocketShape, Profile
 from Path.Op import Vcarve as FCVCarve
 
-from ocp_freecad_cam.api_util import ParamMapping, apply_params, map_params
+from ocp_freecad_cam.api_util import AutoUnitKey, ParamMapping, apply_params, map_params
 
 if TYPE_CHECKING:
     from api import Job
@@ -139,7 +139,7 @@ class ProfileOp(AreaOp):
                 "individually": "Individually",
             },
         ),
-        "offset_extra": "OffsetExtra",
+        "offset_extra": AutoUnitKey("OffsetExtra"),
         "use_comp": "UseComp",
         "process_circles": "processCircles",
         "process_holes": "processHoles",
@@ -176,7 +176,7 @@ class ProfileOp(AreaOp):
 class FaceOp(AreaOp):
     fc_module = MillFace
     param_mapping = {
-        "finish_depth": "FinishDepth",
+        "finish_depth": AutoUnitKey("FinishDepth"),
         "boundary": (
             "BoundaryShape",
             {
@@ -224,7 +224,7 @@ class FaceOp(AreaOp):
 class PocketOp(AreaOp):
     fc_module = PocketShape
     param_mapping = {
-        "finish_depth": "FinishDepth",
+        "finish_depth": AutoUnitKey("FinishDepth"),
         "pattern": (
             "OffsetPattern",
             {
@@ -236,7 +236,7 @@ class PocketOp(AreaOp):
             },
         ),
         "cut_mode": ("CutMode", {"climb": "Climb", "conventional": "Conventional"}),
-        "extra_offset": "ExtraOffset",
+        "extra_offset": AutoUnitKey("ExtraOffset"),
         "keep_tool_down": "KeepToolDown",
         "min_travel": "MinTravel",
         "pocket_last_stepover": "PocketLastStepOver",
@@ -296,7 +296,7 @@ class DrillOp(Op):
             {"none": "None", "1x": "Drill Tip", "2x": "2x Drill Tip"},
         ),
         "keep_tool_down": "KeepToolDown",
-        "peck_depth": "PeckDepth",
+        "peck_depth": AutoUnitKey("PeckDepth"),
         "peck_enabled": "PeckEnabled",
         "retract_height": "RetractHeight",
         "chip_break_enabled": "chipBreakEnabled",
@@ -340,7 +340,7 @@ class HelixOp(Op):
     fc_module = Helix
     param_mapping = {
         "direction": ("Direction", {"cw": "CW", "ccw": "CCW"}),
-        "offset_extra": "OffsetExtra",
+        "offset_extra": AutoUnitKey("OffsetExtra"),
         "start_radius": "StartRadius",
         "start_side": ("StartSide", {"out": "Outside", "in": "Inside"}),
         "step_over": "StepOver",
@@ -374,8 +374,8 @@ class HelixOp(Op):
 class DeburrOp(Op):
     fc_module = Deburr
     param_mapping = {
-        "width": "Width",
-        "extra_depth": "ExtraDepth",
+        "width": AutoUnitKey("Width"),
+        "extra_depth": AutoUnitKey("ExtraDepth"),
         "direction": ("Direction", {"cw": "CW", "ccw": "CCW"}),
         "entry_point": "EntryPoint",
     }
@@ -462,8 +462,8 @@ class Tab(Dressup):
     factory = Tags
     mapping = {
         "angle": "Angle",
-        "height": "Height",
-        "width": "Width",
+        "height": AutoUnitKey("Height"),
+        "width": AutoUnitKey("Width"),
         "positions": "Positions",
         "disabled": "Disabled",
         "fillet_radius": "Radius",

@@ -711,7 +711,7 @@ class VBit(Endmill):
     prop_mapping = {
         **Endmill.prop_mapping,
         "tip_angle": "CuttingEdgeAngle",
-        "tip_diameter": "TipDiameter",
+        "tip_diameter": AutoUnitKey("TipDiameter"),
     }
 
     def __init__(
