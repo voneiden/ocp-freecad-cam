@@ -5,7 +5,7 @@ import Path.Base.Util as PathUtil
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCP.BRepTools import BRepTools
 from OCP.gp import gp_Trsf
-from OCP.TopAbs import TopAbs_EDGE, TopAbs_ShapeEnum
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_ShapeEnum
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopoDS import (
     TopoDS_Builder,
@@ -13,6 +13,7 @@ from OCP.TopoDS import (
     TopoDS_Edge,
     TopoDS_Face,
     TopoDS_Shape,
+    TopoDS_Solid,
     TopoDS_Vertex,
     TopoDS_Wire,
 )
@@ -30,7 +31,13 @@ TopoDS_ShapeTypes: TypeAlias = Union[
     TopoDS_Face, TopoDS_Wire, TopoDS_Edge, TopoDS_Vertex, TopoDS_Compound
 ]
 CompoundSource: TypeAlias = Union[
-    TopoDS_Compound, "cq.Compound", "b3d.Compound", "cq.Workplane", "b3d.ShapeList"
+    TopoDS_Compound,
+    "cq.Compound",
+    "b3d.Compound",
+    "cq.Workplane",
+    "b3d.ShapeList",
+    "cq.Solid",
+    "b3d.Solid",
 ]
 ShapeSource: TypeAlias = Union[
     TopoDS_ShapeTypes,
@@ -64,7 +71,9 @@ def extract_topods_shapes(
 
     if cq:
         valid_cq_shapes = (
-            [cq.Compound] if compound else [cq.Face, cq.Wire, cq.Edge, cq.Vertex]
+            [cq.Compound, cq.Solid]
+            if compound
+            else [cq.Face, cq.Wire, cq.Edge, cq.Vertex]
         )
         if isinstance(shape_source, cq.Workplane):
             return [
@@ -76,7 +85,7 @@ def extract_topods_shapes(
             return [shape_source.wrapped]
     if b3d:
         valid_b3d_shapes = (
-            [b3d.Compound] if compound else [b3d.Face, b3d.Wire, b3d.Vertex]
+            [b3d.Compound, b3d.Solid] if compound else [b3d.Face, b3d.Wire, b3d.Vertex]
         )
         if isinstance(shape_source, b3d.ShapeList):
             return [
@@ -88,7 +97,7 @@ def extract_topods_shapes(
             return [shape_source.wrapped]
 
     valid_topods_shapes = (
-        [TopoDS_Compound]
+        [TopoDS_Compound, TopoDS_Solid]
         if compound
         else [TopoDS_Face, TopoDS_Wire, TopoDS_Edge, TopoDS_Vertex]
     )
@@ -114,6 +123,8 @@ def split_shapes_by_type(
             edges.append(shape)
         elif isinstance(shape, TopoDS_Vertex):
             vertices.append(shape)
+        elif isinstance(shape, TopoDS_Compound):
+            faces += break_shape_to(shape, TopAbs_FACE)
         else:
             raise ValueError(f"Unknown shape type {type(shape)}")
 
@@ -159,6 +170,8 @@ def shape_to_brep(shape: TopoDS_Shape):
 
 def shape_source_to_compound_brep(shape_source: ShapeSourceOrIterable, trsf: gp_Trsf):
     shapes = extract_topods_shapes(shape_source)
+    if not shapes:
+        shapes = extract_topods_shapes(shape_source, True)
     faces, edges, vertices = split_shapes_by_type(shapes)
 
     if not faces and not edges and not vertices:

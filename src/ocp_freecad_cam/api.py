@@ -79,7 +79,7 @@ class Job:
 
         # Prepare job model
         model_compounds = extract_topods_shapes(model, compound=True)
-        if model_count := len(model_compounds) != 1:
+        if (model_count := len(model_compounds)) != 1:
             raise ValueError(
                 f"Job should be based around a single compound (got {model_count})"
             )
@@ -471,7 +471,11 @@ class Job:
         colinear: float = 10.0,
     ):
         """
-        V-Carve based on voronoi diagrams
+        V-Carve based on voronoi diagrams.
+
+        Verify the tool path carefully! This algorithm is sometimes
+        unstable.
+
         :param shapes:
         :param tool:
         :param discretize: Try a smaller value if getting too many retracts.
