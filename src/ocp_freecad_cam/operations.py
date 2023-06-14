@@ -54,7 +54,7 @@ class Op(ABC):
 
     def execute(self, doc):
         base_features = self.create_base_features(doc)
-        op_tool_controller = self.tool.tool_controller(self.job.fc_job)
+        op_tool_controller = self.tool.tool_controller(self.job)
         fc_op = self.create_operation(base_features)
         fc_op.ToolController = op_tool_controller
         fc_op.Proxy.execute(fc_op)
@@ -86,7 +86,7 @@ class Op(ABC):
         )
         fc_op = self.fc_module.Create(name)
         fc_op.Base = base_features
-        apply_params(fc_op, self.params)
+        apply_params(fc_op, self.params, self.job.units)
         return fc_op
 
     def create_dressups(self, fc_op):

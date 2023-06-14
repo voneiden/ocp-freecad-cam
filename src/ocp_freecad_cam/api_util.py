@@ -1,11 +1,11 @@
 import io
-from typing import TypeAlias, Union
+from typing import Literal, Optional, TypeAlias, Union
 
 import FreeCAD
 import Path.Base.Util as PathUtil
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCP.BRepTools import BRepTools
-from OCP.gp import gp_Trsf
+from OCP.gp import gp_Pnt, gp_Trsf
 from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_ShapeEnum
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopoDS import (
@@ -162,6 +162,13 @@ def shapes_to_brep(shapes: list[TopoDS_Shape]):
     return [shape_to_brep(shape) for shape in shapes]
 
 
+def scale_shape(shape: TopoDS_Shape, scale_factor: float) -> TopoDS_Shape:
+    trsf = gp_Trsf()
+    center_of_the_universe = gp_Pnt(0, 0, 0)
+    trsf.SetScale(center_of_the_universe, scale_factor)
+    return transform_shape(shape, trsf)
+
+
 def shape_to_brep(shape: TopoDS_Shape):
     data = io.BytesIO()
     BRepTools.Write_s(shape, data)
@@ -169,7 +176,9 @@ def shape_to_brep(shape: TopoDS_Shape):
     return data.read().decode("utf8")
 
 
-def shape_source_to_compound_brep(shape_source: ShapeSourceOrIterable, trsf: gp_Trsf):
+def shape_source_to_compound_brep(
+    shape_source: ShapeSourceOrIterable, trsf: gp_Trsf, scale_factor: Optional[float]
+):
     shapes = extract_topods_shapes(shape_source)
     if not shapes:
         shapes = extract_topods_shapes(shape_source, True)
@@ -191,6 +200,10 @@ def shape_source_to_compound_brep(shape_source: ShapeSourceOrIterable, trsf: gp_
     for vertex in vertices:
         builder.Add(compound, vertex)
 
+    compound = transform_shape(compound, trsf)
+    if scale_factor:
+        compound = scale_shape(compound, scale_factor)
+
     return {
         "face_count": len(faces),
         "edge_count": len(edges),
@@ -199,27 +212,47 @@ def shape_source_to_compound_brep(shape_source: ShapeSourceOrIterable, trsf: gp_
     }
 
 
-def clean_props(**kwargs):
-    return {k: v for k, v in kwargs.items() if v is not None}
+class AutoUnitKey:
+    def __init__(self, key):
+        self.key = key
 
 
-def map_prop(mapping, k, v):
-    match mapping[k]:
+class AutoUnitValue:
+    def __init__(self, value):
+        self.value = value
+
+    def convert(self, unit: Literal["metric", "imperial"]):
+        if isinstance(self.value, (int, float)):
+            if unit == "metric":
+                return f"{self.value} mm"
+            elif unit == "imperial":
+                return f"{self.value} in"
+            raise ValueError(f"Unknown unit: {unit}")
+        return self.value
+
+
+ParamMapping: TypeAlias = dict[str, Union[str, AutoUnitKey, dict[str, str]]]
+
+
+def map_prop(mapping: ParamMapping, k, v):
+    result = mapping[k]
+    match result:
+        case AutoUnitKey():
+            return result.key, AutoUnitValue(v)
         case (nk, dv):
             return nk, dv[v]
         case nk:
             return nk, v
 
 
-ParamMapping: TypeAlias = dict[str, Union[str, dict[str, str]]]
-
-
 def map_params(mapping: ParamMapping, **kwargs):
     return dict(map_prop(mapping, k, v) for k, v in kwargs.items() if v is not None)
 
 
-def apply_params(fc_obj, params):
+def apply_params(fc_obj, params, unit: Literal["metric", "imperial"]):
     for k, v in params.items():
+        if isinstance(v, AutoUnitValue):
+            v = v.convert(unit)
         PathUtil.setProperty(fc_obj, k, v)
 
 

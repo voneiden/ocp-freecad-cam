@@ -30,11 +30,14 @@ from Path.Post.Processor import PostProcessor
 from Path.Tool import Bit, Controller
 
 from ocp_freecad_cam.api_util import (
+    AutoUnitKey,
     CompoundSource,
     FreeCADConfiguration,
     ShapeSource,
-    clean_props,
+    apply_params,
     extract_topods_shapes,
+    map_params,
+    scale_shape,
     shape_source_to_compound_brep,
     shape_to_brep,
     transform_shape,
@@ -78,16 +81,6 @@ class Job:
     ):
         self.top_plane = extract_plane(top_plane)
 
-        # Prepare job model
-        model_compounds = extract_topods_shapes(model, compound=True)
-        if (model_count := len(model_compounds)) != 1:
-            raise ValueError(
-                f"Job should be based around a single compound (got {model_count})"
-            )
-        self.job_obj_brep = shape_to_brep(
-            transform_shape(model_compounds[0], self._forward_trsf)
-        )
-
         # Internal attributes
         self.ops: list[Op] = []
         self.fc_job = None
@@ -96,6 +89,26 @@ class Job:
 
         # FreeCAD attributes
         self.geometry_tolerance = geometry_tolerance
+
+        # Prepare job model
+        model_compounds = extract_topods_shapes(model, compound=True)
+        if (model_count := len(model_compounds)) != 1:
+            raise ValueError(
+                f"Job should be based around a single compound (got {model_count})"
+            )
+        transformed_job_model = transform_shape(model_compounds[0], self._forward_trsf)
+        if sf := self._scale_factor:
+            transformed_job_model = scale_shape(transformed_job_model, sf)
+
+        self.job_obj_brep = shape_to_brep(transformed_job_model)
+
+    @property
+    def _scale_factor(self):
+        if self.units == "metric":
+            return None
+        elif self.units == "imperial":
+            return 25.4
+        raise ValueError(f"Unknown unit: ({self.units})")
 
     def _configure_freecad(self):
         # Configure units
@@ -157,19 +170,14 @@ class Job:
         postlist = buildPostList(job)
         processor = PostProcessor.load(job.PostProcessor)
 
-        print(postlist)
-
         for idx, section in enumerate(postlist):
-            print("idx", id)
-
             name, sublist = section
-            print("-name", name)
-            print("-sublist", sublist)
-            print([s.Name for s in sublist])
-            print(sublist[0].Path.Commands)
-
             with tempfile.NamedTemporaryFile() as tmp_file:
-                gcode = processor.export(sublist, tmp_file.name, "--no-show-editor")
+                options = ["--no-show-editor"]
+                if self.units == "imperial":
+                    options.append("--inches")
+
+                gcode = processor.export(sublist, tmp_file.name, " ".join(options))
                 return gcode
 
     def save_fcstd(self, filename="debug.fcstd"):
@@ -249,7 +257,9 @@ class Job:
             # Op settings
             tool=tool,
             dressups=dressups or [],
-            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **shape_source_to_compound_brep(
+                shapes, self._forward_trsf, self._scale_factor
+            ),
         )
         self._add_op(op)
         return self
@@ -288,7 +298,9 @@ class Job:
             exclude_raised=exclude_raised,
             pattern=pattern,
             tool=tool,
-            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **shape_source_to_compound_brep(
+                shapes, self._forward_trsf, self._scale_factor
+            ),
             **kwargs,
         )
         self._add_op(op)
@@ -353,7 +365,9 @@ class Job:
             # OP settings
             tool=tool,
             dressups=dressups or [],
-            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **shape_source_to_compound_brep(
+                shapes, self._forward_trsf, self._scale_factor
+            ),
         )
         self._add_op(op)
         return self
@@ -395,7 +409,9 @@ class Job:
             keep_tool_down=keep_tool_down,
             retract_height=retract_height,
             chip_break_enabled=chip_break_enabled,
-            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **shape_source_to_compound_brep(
+                shapes, self._forward_trsf, self._scale_factor
+            ),
             **kwargs,
         )
         self._add_op(op)
@@ -437,7 +453,9 @@ class Job:
             step_over=step_over,
             # Op
             tool=tool,
-            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **shape_source_to_compound_brep(
+                shapes, self._forward_trsf, self._scale_factor
+            ),
             **kwargs,
         )
         self._add_op(op)
@@ -461,7 +479,9 @@ class Job:
             entry_point=entry_point,
             # Op
             tool=tool,
-            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **shape_source_to_compound_brep(
+                shapes, self._forward_trsf, self._scale_factor
+            ),
         )
         self._add_op(op)
         return self
@@ -493,7 +513,9 @@ class Job:
             colinear=colinear,
             # Op
             tool=tool,
-            **shape_source_to_compound_brep(shapes, self._forward_trsf),
+            **shape_source_to_compound_brep(
+                shapes, self._forward_trsf, self._scale_factor
+            ),
         )
         self._add_op(op)
         return self
@@ -615,12 +637,12 @@ class Toolbit:
         self.obj = None
         self._tool_controller = None
 
-    def tool_controller(self, job):
+    def tool_controller(self, job: Job):
         if self._tool_controller is None:
             self.create(job)
         return self._tool_controller
 
-    def create(self, job):
+    def create(self, job: Job):
         tool_shape = Bit.findToolShape(self.tool_file_name, self.path)
         if not tool_shape:
             raise ValueError(
@@ -631,11 +653,8 @@ class Toolbit:
         self._tool_controller = Controller.Create(
             f"TC: {self.tool_name}", tool=self.obj, toolNumber=self.tool_number
         )
-
-        job.addToolController(self._tool_controller)
-
-        for k, v in self.props.items():
-            PathUtil.setProperty(self.obj, self.prop_mapping[k], v)
+        job.fc_job.addToolController(self._tool_controller)
+        apply_params(self.obj, self.props, job.units)
 
 
 class Endmill(Toolbit):
@@ -645,10 +664,10 @@ class Endmill(Toolbit):
         "flutes": "Flutes",
         "material": "Material",
         "spindle_direction": "SpindleDirection",
-        "cutting_edge_height": "CuttingEdgeHeight",
-        "diameter": "Diameter",
-        "length": "Length",
-        "shank_diameter": "Shank Diameter",
+        "cutting_edge_height": AutoUnitKey("CuttingEdgeHeight"),
+        "diameter": AutoUnitKey("Diameter"),
+        "length": AutoUnitKey("Length"),
+        "shank_diameter": AutoUnitKey("Shank Diameter"),
     }
 
     def __init__(
@@ -669,7 +688,8 @@ class Endmill(Toolbit):
     ):
         super().__init__(tool_name, self.file_name, tool_number=tool_number)
 
-        self.props = clean_props(
+        self.props = map_params(
+            self.prop_mapping,
             chip_load=chip_load,
             flutes=flutes,
             material=material,
@@ -713,7 +733,8 @@ class VBit(Endmill):
         tool_number: int = 1,
     ):
         super().__init__(tool_name, self.file_name, tool_number=tool_number)
-        self.props = clean_props(
+        self.props = map_params(
+            self.prop_mapping,
             chip_load=chip_load,
             flutes=flutes,
             material=material,
