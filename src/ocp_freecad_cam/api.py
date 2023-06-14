@@ -31,6 +31,7 @@ from Path.Tool import Bit, Controller
 
 from ocp_freecad_cam.api_util import (
     CompoundSource,
+    FreeCADConfiguration,
     ShapeSource,
     clean_props,
     extract_topods_shapes,
@@ -96,10 +97,6 @@ class Job:
         # FreeCAD attributes
         self.geometry_tolerance = geometry_tolerance
 
-        # Prep document
-        self._configure_freecad()
-        self.doc = FreeCAD.newDocument()
-
     def _configure_freecad(self):
         # Configure units
         param = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Units")
@@ -118,24 +115,33 @@ class Job:
         # param.SetInt("UseAbsoluteToolPaths", 1)
 
     def _build(self):
-        fc_compound = Part.Compound()
-        fc_compound.importBrepFromString(self.job_obj_brep)
-        feature = self.doc.addObject("Part::Feature", f"root_brep")
-        feature.Shape = fc_compound
+        with FreeCADConfiguration(self.units):
+            self.doc = FreeCAD.newDocument()
+            self.set_active()
+            fc_compound = Part.Compound()
+            fc_compound.importBrepFromString(self.job_obj_brep)
+            feature = self.doc.addObject("Part::Feature", f"root_brep")
+            feature.Shape = fc_compound
 
-        job = FCJob.Create("Job", [feature])
-        self.job = job
-        self.fc_job = job.Proxy
-        job.PostProcessor = "grbl"
-        job.Stock.ExtZpos = 0
-        job.Stock.ExtZneg = 0
-        job.Tools.Group[0].Tool.Diameter = 1
+            job = FCJob.Create("Job", [feature])
+            self.job = job
+            self.fc_job = job.Proxy
 
-        for op in self.ops:
-            op.execute(self.doc)
+            # Remove default tools as we'll create our own later
+            # Necessary also because of  buggy FX implementation
+            tools = [tool for tool in self.job.Tools.Group]
+            for tool in tools:
+                self.job.Tools.removeObject(tool)
 
-        self.doc.recompute()
-        self._needs_build = False
+            job.PostProcessor = "grbl"
+            job.Stock.ExtZpos = 0
+            job.Stock.ExtZneg = 0
+
+            for op in self.ops:
+                op.execute(self.doc)
+
+            self.doc.recompute()
+            self._needs_build = False
 
     def show(self):
         if self._needs_build:
@@ -229,7 +235,6 @@ class Job:
             # Set to some valid value
             side = "out"
 
-        self.set_active()
         op = ProfileOp(
             self,
             # Profile settings
@@ -274,7 +279,7 @@ class Job:
         :param kwargs:
         :return:
         """
-        self.set_active()
+
         op = FaceOp(
             self,
             finish_depth=finish_depth,
@@ -331,7 +336,7 @@ class Job:
         :param dressups: Dressup operations
         :return:
         """
-        self.set_active()
+
         op = PocketOp(
             self,
             finish_depth=finish_depth,
@@ -380,7 +385,7 @@ class Job:
         :param kwargs:
         :return:
         """
-        self.set_active()
+
         op = DrillOp(
             self,
             tool=tool,
@@ -422,7 +427,7 @@ class Job:
         :param kwargs:
         :return:
         """
-        self.set_active()
+
         op = HelixOp(
             self,
             direction=direction,
@@ -448,7 +453,6 @@ class Job:
         direction: Literal["cw", "ccw"] = "cw",
         entry_point: int = 0,
     ):
-        self.set_active()
         op = DeburrOp(
             self,
             width=width,
@@ -482,7 +486,7 @@ class Job:
         :param colinear:
         :return:
         """
-        self.set_active()
+
         op = VCarveOp(
             self,
             discretize=discretize,

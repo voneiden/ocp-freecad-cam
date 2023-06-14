@@ -40,12 +40,13 @@ in a file like
 `/home/user/miniconda3/envs/cq/lib/python3.10/site-packages/freecad.pth`
 
 ## Configuring FreeCAD
-Launch FreeCAD and configure the following to suit your needs:
+This library configures FreeCAD on the fly and attempts to
+restore original configuration after it is done. The following 
+settings are configured automatically:
 
 * General -> Unit System
-  * For metric use: `Metric Small Parts & CNC`
-  * For imperial use: `Imperial Decimal` or `Building US`
-* Path -> Job Preferences -> Tools -> Check `Store absolute paths` (TODO is this needed?) 
+  * For metric using: `Metric Small Parts & CNC`
+  * For imperial using: `Imperial Decimal` (or `Building US`) 
 * Path -> Advanced -> Enable OCL dependent features
 
 
@@ -53,3 +54,6 @@ Launch FreeCAD and configure the following to suit your needs:
 
 Pocket3D does not work, possibly related to https://github.com/FreeCAD/FreeCAD/issues/6815 - shouldn't be a big loss
 though, Surface3D can get the same things done IMO.
+
+VCarve can produce unstable toolpaths, but that is probably a bug in the underlying openvoronoi library. Tweaking the 
+job params may help.

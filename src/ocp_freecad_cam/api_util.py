@@ -1,6 +1,7 @@
 import io
 from typing import TypeAlias, Union
 
+import FreeCAD
 import Path.Base.Util as PathUtil
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCP.BRepTools import BRepTools
@@ -220,3 +221,40 @@ def map_params(mapping: ParamMapping, **kwargs):
 def apply_params(fc_obj, params):
     for k, v in params.items():
         PathUtil.setProperty(fc_obj, k, v)
+
+
+class FreeCADConfiguration:
+    def __init__(self, units):
+        self.units = units
+
+        self.previous_units = None
+        self.previous_advanced_ocl_features = None
+
+    def __enter__(self):
+        # Configure units
+        param = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Units")
+        self.previous_units = param.GetInt("UserSchema")
+        if self.units == "metric":
+            param.SetInt("UserSchema", 6)
+        elif self.units == "imperial":
+            param.SetInt("UserSchema", 3)
+        else:
+            raise ValueError(f"Unknown unit: {self.units}")
+
+        # Enable OCL
+        param = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Path")
+        self.previous_advanced_ocl_features = param.GetInt("EnableAdvancedOCLFeatures")
+        param.SetInt("EnableAdvancedOCLFeatures", 1)
+
+        # Absolute toolpaths (not sure if needed?)
+        # param.SetInt("UseAbsoluteToolPaths", 1)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if isinstance(self.previous_units, int):
+            param = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Units")
+            param.SetInt("UserSchema", self.previous_units)
+        if isinstance(self.previous_advanced_ocl_features, int):
+            param = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Path")
+            param.SetInt(
+                "EnableAdvancedOCLFeatures", self.previous_advanced_ocl_features
+            )
