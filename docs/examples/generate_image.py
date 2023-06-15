@@ -1,5 +1,15 @@
-from OCP.AIS import AIS_InteractiveContext, AIS_InteractiveObject, AIS_Shape, AIS_Shaded, AIS_DisplayMode
-from OCP.Aspect import Aspect_DisplayConnection, Aspect_NeutralWindow, Aspect_TypeOfTriedronPosition
+from OCP.AIS import (
+    AIS_InteractiveContext,
+    AIS_InteractiveObject,
+    AIS_Shape,
+    AIS_Shaded,
+    AIS_DisplayMode,
+)
+from OCP.Aspect import (
+    Aspect_DisplayConnection,
+    Aspect_NeutralWindow,
+    Aspect_TypeOfTriedronPosition,
+)
 from OCP.Image import Image_AlienPixMap
 from OCP.OpenGl import OpenGl_GraphicDriver
 from OCP.Quantity import Quantity_Color
@@ -42,6 +52,7 @@ def render(shapes, output_path):
     view.ToPixMap(image, 660, 495)
     image.Save(TCollection_AsciiString(output_path))
 
+
 def render_file(file_path, display_object_names, output_path):
     with open(file_path, "r") as f:
         ast = compile(f.read(), file_path, "exec")
@@ -69,6 +80,7 @@ def render_file(file_path, display_object_names, output_path):
             display_shapes += ais_shapes
 
     render(display_shapes, output_path)
+
 
 if __name__ == "__main__":
     render_file("cq_profile.py", ["wp", "job"], "images/cq_profile.png")
