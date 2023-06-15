@@ -1,8 +1,6 @@
 import os
 import sys
 
-from path import Path
-
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
