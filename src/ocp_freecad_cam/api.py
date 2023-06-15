@@ -708,12 +708,12 @@ class Toolbit:
         self.obj = None
         self._tool_controller = None
 
-    def tool_controller(self, job: Job):
+    def tool_controller(self, fc_job, units):
         if self._tool_controller is None:
-            self.create(job)
+            self.create(fc_job, units)
         return self._tool_controller
 
-    def create(self, job: Job):
+    def create(self, fc_job, units):
         tool_shape = Bit.findToolShape(self.tool_file_name, self.path)
         if not tool_shape:
             raise ValueError(
@@ -724,8 +724,8 @@ class Toolbit:
         self._tool_controller = Controller.Create(
             f"TC: {self.tool_name}", tool=self.obj, toolNumber=self.tool_number
         )
-        job.fc_job.addToolController(self._tool_controller)
-        apply_params(self.obj, self.props, job.units)
+        fc_job.addToolController(self._tool_controller)
+        apply_params(self.obj, self.props, units)
 
 
 class Endmill(Toolbit):

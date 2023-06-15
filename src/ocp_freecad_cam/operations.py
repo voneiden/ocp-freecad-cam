@@ -54,7 +54,7 @@ class Op(ABC):
 
     def execute(self, doc):
         base_features = self.create_base_features(doc)
-        op_tool_controller = self.tool.tool_controller(self.job)
+        op_tool_controller = self.tool.tool_controller(self.job.fc_job, self.job.units)
         fc_op = self.create_operation(base_features)
         fc_op.ToolController = op_tool_controller
         fc_op.Proxy.execute(fc_op)
