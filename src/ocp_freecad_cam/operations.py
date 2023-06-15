@@ -17,7 +17,7 @@ import Path.Base.SetupSheet as PathSetupSheet
 import Path.Base.Util as PathUtil
 import PathScripts.PathUtils as PathUtils
 from Path.Dressup import Boundary, DogboneII, Tags
-from Path.Op import Deburr, Drilling, Helix, MillFace, PocketShape, Profile
+from Path.Op import Deburr, Drilling, Helix, MillFace, PocketShape, Profile, Surface
 from Path.Op import Vcarve as FCVCarve
 
 from ocp_freecad_cam.api_util import AutoUnitKey, ParamMapping, apply_params, map_params
@@ -61,6 +61,9 @@ class Op(ABC):
         self.create_dressups(fc_op)
 
     def create_base_features(self, doc):
+        if self.compound_brep is None:
+            return []
+
         fc_compound = Part.Compound()
         fc_compound.importBrepFromString(self.compound_brep)
         feature = doc.addObject("Part::Feature", f"op_brep_{self.n}")
@@ -410,6 +413,115 @@ class VCarveOp(Op):
         super().__init__(*args, **kwargs)
         self.params = map_params(
             self.param_mapping, discretize=discretize, colinear=colinear
+        )
+
+
+class Surface3DOp(Op):
+    fc_module = Surface
+    param_mapping = {
+        "bound_box": ("BoundBox", {"base_bound_box": "BaseBoundBox", "stock": "Stock"}),
+        "cut_mode": ("CutMode", {"climb": "Climb", "conventional": "Conventional"}),
+        "cut_pattern": (
+            "CutPattern",
+            {
+                "line": "Line",
+                "circular": "Circular",
+                "circular_zig_zag": "CircularZigZag",
+                "offset": "Offset",
+                "spiral": "Spiral",
+                "zigzag": "ZigZag",
+            },
+        ),
+        "cut_pattern_angle": "CutPatternAngle",
+        "cut_pattern_reversed": "CutPatternReversed",
+        "depth_offset": AutoUnitKey("DepthOffset"),
+        "layer_mode": ("LayerMode", {"single": "Single-pass", "multi": "Multi-pass"}),
+        "profile_edges": (
+            "ProfileEdges",
+            {"none": "None", "only": "Only", "first": "First", "last": "Last"},
+        ),
+        "sample_interval": "SampleInterval",
+        "step_over": "StepOver",
+        "angular_deflection": AutoUnitKey("AngularDeflection"),
+        "linear_deflection": AutoUnitKey("LinearDeflection"),
+        "circular_use_g2g3": "CircularUseG2G3",
+        "gap_threshold": AutoUnitKey("GapThreshold"),
+        "optimize_linear_paths": "OptimizeLinearPaths",
+        "optimize_step_over_transitions": "OptimizeStepOverTransitions",
+        "avoid_last_x_faces": "AvoidLastX_Faces",
+        "avoid_last_x_internal_features": "AvoidLastX_InternalFeatures",
+        "boundary_adjustment": AutoUnitKey("BoundaryAdjustment"),
+        "boundary_enforcement": "BoundaryEnforcement",
+        "multiple_features": (
+            "HandleMultipleFeatures",
+            {"collectively": "Collectively", "individually": "Individually"},
+        ),
+        "internal_features_adjustment": AutoUnitKey("InternalFeaturesAdjustment"),
+        "internal_features_cut": "InternalFeaturesCut",
+        "start_point": AutoUnitKey("StartPoint"),
+        "scan_type": ("ScanType", {"planar": "Planar", "rotational": "Rotational"}),
+    }
+
+    def __init__(
+        self,
+        *args,
+        bound_box: Literal["base_bound_box", "stock"],
+        cut_mode: Literal["climb", "conventional"],
+        cut_pattern: Literal[
+            "line", "circular", "circular_zig_zag", "offset", "spiral", "zigzag"
+        ],
+        cut_pattern_angle: float,
+        cut_pattern_reversed: bool,
+        depth_offset: float,
+        layer_mode: Literal["single", "multi"],
+        profile_edges: Literal["none", "only", "first", "last"],
+        sample_interval: float | str,
+        step_over: float,
+        angular_deflection: float | str,
+        linear_deflection: float | str,
+        circular_use_g2g3: bool,
+        gap_threshold: float | str,
+        optimize_linear_paths: bool,
+        optimize_step_over_transitions: bool,
+        avoid_last_x_faces: int,
+        avoid_last_x_internal_features: bool,
+        boundary_adjustment: float | str,
+        boundary_enforcement: bool,
+        multiple_features: Literal["collectively", "individually"],
+        internal_features_adjustment: float | str,
+        internal_features_cut: bool,
+        start_point: tuple[float | str, float | str, float | str],
+        scan_type: Literal["planar", "rotational"],
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.params = map_params(
+            self.param_mapping,
+            bound_box=bound_box,
+            cut_mode=cut_mode,
+            cut_pattern=cut_pattern,
+            cut_pattern_angle=cut_pattern_angle,
+            cut_pattern_reversed=cut_pattern_reversed,
+            depth_offset=depth_offset,
+            layer_mode=layer_mode,
+            profile_edges=profile_edges,
+            sample_interval=sample_interval,
+            step_over=step_over,
+            angular_deflection=angular_deflection,
+            linear_deflection=linear_deflection,
+            circular_use_g2g3=circular_use_g2g3,
+            gap_threshold=gap_threshold,
+            optimize_linear_paths=optimize_linear_paths,
+            optimize_step_over_transitions=optimize_step_over_transitions,
+            avoid_last_x_faces=avoid_last_x_faces,
+            avoid_last_x_internal_features=avoid_last_x_internal_features,
+            boundary_adjustment=boundary_adjustment,
+            boundary_enforcement=boundary_enforcement,
+            multiple_features=multiple_features,
+            internal_features_adjustment=internal_features_adjustment,
+            internal_features_cut=internal_features_cut,
+            start_point=start_point,
+            scan_type=scan_type,
         )
 
 

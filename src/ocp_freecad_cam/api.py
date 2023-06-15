@@ -52,6 +52,7 @@ from ocp_freecad_cam.operations import (
     Op,
     PocketOp,
     ProfileOp,
+    Surface3DOp,
     VCarveOp,
 )
 from ocp_freecad_cam.visualizer import visualize_fc_job
@@ -515,6 +516,76 @@ class Job:
             tool=tool,
             **shape_source_to_compound_brep(
                 shapes, self._forward_trsf, self._scale_factor
+            ),
+        )
+        self._add_op(op)
+        return self
+
+    def surface(
+        self,
+        shapes: Optional[ShapeSource],
+        tool: "Toolbit",
+        *,
+        bound_box: Literal["base_bound_box", "stock"] = "base_bound_box",
+        cut_mode: Literal["climb", "conventional"] = "climb",
+        cut_pattern: Literal[
+            "line", "circular", "circular_zig_zag", "offset", "spiral", "zigzag"
+        ] = "line",
+        cut_pattern_angle: float = 0,
+        cut_pattern_reversed: bool = False,
+        depth_offset: float = 0,
+        layer_mode: Literal["single", "multi"] = "single",
+        profile_edges: Literal["none", "only", "first", "last"] = "none",
+        sample_interval: float | str = "1.0 mm",
+        step_over: float = 100,
+        angular_deflection: float | str = "0.25 mm",
+        linear_deflection: float
+        | str = "0.001 mm",  # Not visible in UI, but this is the default in code
+        circular_use_g2g3: bool = False,
+        gap_threshold: float | str = "0.01 mm",
+        optimize_linear_paths: bool = True,
+        optimize_step_over_transitions: bool = False,
+        avoid_last_x_faces: int = 0,
+        avoid_last_x_internal_features: bool = True,
+        boundary_adjustment: float | str = 0,
+        boundary_enforcement: bool = True,
+        multiple_features: Literal["collectively", "individually"] = "collectively",
+        internal_features_adjustment: float | str = 0,
+        internal_features_cut: bool = True,
+        start_point: tuple[float | str, float | str, float | str] = None,
+        scan_type: Literal["planar", "rotational"] = "planar",
+    ):
+        op = Surface3DOp(
+            self,
+            bound_box=bound_box,
+            cut_mode=cut_mode,
+            cut_pattern=cut_pattern,
+            cut_pattern_angle=cut_pattern_angle,
+            cut_pattern_reversed=cut_pattern_reversed,
+            depth_offset=depth_offset,
+            layer_mode=layer_mode,
+            profile_edges=profile_edges,
+            sample_interval=sample_interval,
+            step_over=step_over,
+            angular_deflection=angular_deflection,
+            linear_deflection=linear_deflection,
+            circular_use_g2g3=circular_use_g2g3,
+            gap_threshold=gap_threshold,
+            optimize_linear_paths=optimize_linear_paths,
+            optimize_step_over_transitions=optimize_step_over_transitions,
+            avoid_last_x_faces=avoid_last_x_faces,
+            avoid_last_x_internal_features=avoid_last_x_internal_features,
+            boundary_adjustment=boundary_adjustment,
+            boundary_enforcement=boundary_enforcement,
+            multiple_features=multiple_features,
+            internal_features_adjustment=internal_features_adjustment,
+            internal_features_cut=internal_features_cut,
+            start_point=start_point,
+            scan_type=scan_type,
+            # Op
+            tool=tool,
+            **shape_source_to_compound_brep(
+                shapes, self._forward_trsf, self._scale_factor, allow_none=True
             ),
         )
         self._add_op(op)

@@ -177,8 +177,19 @@ def shape_to_brep(shape: TopoDS_Shape):
 
 
 def shape_source_to_compound_brep(
-    shape_source: ShapeSourceOrIterable, trsf: gp_Trsf, scale_factor: Optional[float]
+    shape_source: ShapeSourceOrIterable,
+    trsf: gp_Trsf,
+    scale_factor: Optional[float],
+    allow_none=False,
 ):
+    if allow_none and shape_source is None:
+        return {
+            "face_count": 0,
+            "edge_count": 0,
+            "vertex_count": 0,
+            "compound_brep": None,
+        }
+
     shapes = extract_topods_shapes(shape_source)
     if not shapes:
         shapes = extract_topods_shapes(shape_source, True)
@@ -222,13 +233,22 @@ class AutoUnitValue:
         self.value = value
 
     def convert(self, unit: Literal["metric", "imperial"]):
-        if isinstance(self.value, (int, float)):
+        return self._convert(self.value, unit)
+
+    def _convert(self, value, unit: Literal["metric", "imperial"]):
+        pq = FreeCAD.Units.parseQuantity
+
+        if isinstance(value, (int, float)):
             if unit == "metric":
-                return f"{self.value} mm"
-            elif unit == "imperial":
-                return f"{self.value} in"
+                return value
+            if unit == "imperial":
+                return float(pq(f"{value} in"))
             raise ValueError(f"Unknown unit: {unit}")
-        return self.value
+
+        elif isinstance(value, tuple):
+            return tuple(self._convert(v, unit) for v in value)
+
+        return float(pq(value))
 
 
 ParamMapping: TypeAlias = dict[str, Union[str, AutoUnitKey, dict[str, str]]]
