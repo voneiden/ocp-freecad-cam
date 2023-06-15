@@ -1,17 +1,5 @@
 """
 This is the user facing API of ocp_freecad_cam
-
-TODO: Investigate setting FreeCAD units
-* Root.BaseApp.Preferences.Units
-  * UserSchema
-    * "6" for Metric CNC
-    * "3" for Imperial Decimal
-    * "5" for US Building
-TODO: Investigate setting opencamlib settings
-* Root.BaseApp.Preferences.Path.EnableAdvancedOCLFeatures "1"
-TODO: Investigate setting absolute paths for toolbits?
-* Root.BaseApp.Preferences.Path.UseAbsoluteToolPaths "1"
-
 """
 import io
 import logging
@@ -20,7 +8,6 @@ from typing import Literal, Optional
 
 import FreeCAD
 import Part
-import Path.Base.Util as PathUtil
 import Path.Log as Log
 from OCP.BRepTools import BRepTools
 from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Face, TopoDS_Shape
@@ -32,7 +19,6 @@ from Path.Tool import Bit, Controller
 from ocp_freecad_cam.api_util import (
     AutoUnitKey,
     CompoundSource,
-    FreeCADDocument,
     ShapeSource,
     apply_params,
     extract_topods_shapes,
@@ -683,7 +669,7 @@ def to_brep(shape: TopoDS_Shape):
 
 class Toolbit:
     props: dict
-    prop_mapping = {}
+    _prop_mapping = {}
 
     def __init__(self, tool_name: str, tool_file_name: str, tool_number=1, path=None):
         self.tool_name = tool_name
@@ -715,8 +701,8 @@ class Toolbit:
 
 
 class Endmill(Toolbit):
-    file_name = "endmill.fcstd"
-    prop_mapping = {
+    _file_name = "endmill.fcstd"
+    _prop_mapping = {
         "chip_load": "ChipLoad",
         "flutes": "Flutes",
         "material": "Material",
@@ -743,10 +729,10 @@ class Endmill(Toolbit):
         # TC
         tool_number: int = 1,
     ):
-        super().__init__(tool_name, self.file_name, tool_number=tool_number)
+        super().__init__(tool_name, self._file_name, tool_number=tool_number)
 
         self.props = map_params(
-            self.prop_mapping,
+            self._prop_mapping,
             chip_load=chip_load,
             flutes=flutes,
             material=material,
@@ -759,14 +745,14 @@ class Endmill(Toolbit):
 
 
 class Ballnose(Endmill):
-    file_name = "ballnose.fcstd"
+    _file_name = "ballnose.fcstd"
 
 
 class VBit(Endmill):
-    file_name = "v-bit.fcstd"
+    _file_name = "v-bit.fcstd"
 
-    prop_mapping = {
-        **Endmill.prop_mapping,
+    _prop_mapping = {
+        **Endmill._prop_mapping,
         "tip_angle": "CuttingEdgeAngle",
         "tip_diameter": AutoUnitKey("TipDiameter"),
     }
@@ -789,9 +775,9 @@ class VBit(Endmill):
         # TC
         tool_number: int = 1,
     ):
-        super().__init__(tool_name, self.file_name, tool_number=tool_number)
+        super().__init__(tool_name, self._file_name, tool_number=tool_number)
         self.props = map_params(
-            self.prop_mapping,
+            self._prop_mapping,
             chip_load=chip_load,
             flutes=flutes,
             material=material,
