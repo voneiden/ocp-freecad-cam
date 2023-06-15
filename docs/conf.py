@@ -32,6 +32,7 @@ html_static_path = ["_static"]
 
 sys.path.append(os.path.join(os.getcwd(), "../src/"))
 
-#autodoc_member_order = "bysource"
+# autodoc_member_order = "bysource"
 
 autodoc_typehints_format = "fully-qualified"
+autodoc_mock_imports = ["Path", "FreeCAD", "Part", "OCP", "PathScripts"]
