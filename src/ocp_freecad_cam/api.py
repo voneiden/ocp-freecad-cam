@@ -32,7 +32,7 @@ from Path.Tool import Bit, Controller
 from ocp_freecad_cam.api_util import (
     AutoUnitKey,
     CompoundSource,
-    FreeCADConfiguration,
+    FreeCADDocument,
     ShapeSource,
     apply_params,
     extract_topods_shapes,
@@ -86,6 +86,7 @@ class Job:
         self.ops: list[Op] = []
         self.fc_job = None
         self._needs_build = True
+        self.doc = None
         self.units = units
 
         # FreeCAD attributes
@@ -111,51 +112,36 @@ class Job:
             return 25.4
         raise ValueError(f"Unknown unit: ({self.units})")
 
-    def _configure_freecad(self):
-        # Configure units
-        param = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Units")
-        if self.units == "metric":
-            param.SetInt("UserSchema", 6)
-        elif self.units == "imperial":
-            param.SetInt("UserSchema", 3)
-        else:
-            raise ValueError(f"Unknown unit: {self.units}")
-
-        # Enable OCL
-        param = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Path")
-        param.SetInt("EnableAdvancedOCLFeatures", 1)
-
-        # Absolute toolpaths (not sure if needed?)
-        # param.SetInt("UseAbsoluteToolPaths", 1)
-
     def _build(self):
-        with FreeCADConfiguration(self.units):
-            self.doc = FreeCAD.newDocument()
-            self.set_active()
-            fc_compound = Part.Compound()
-            fc_compound.importBrepFromString(self.job_obj_brep)
-            feature = self.doc.addObject("Part::Feature", f"root_brep")
-            feature.Shape = fc_compound
+        if self.doc:
+            FreeCAD.closeDocument(self.doc)
 
-            job = FCJob.Create("Job", [feature])
-            self.job = job
-            self.fc_job = job.Proxy
+        self.doc = FreeCAD.newDocument("ocp_freecad_cam")
+        self.set_active()
+        fc_compound = Part.Compound()
+        fc_compound.importBrepFromString(self.job_obj_brep)
+        feature = self.doc.addObject("Part::Feature", f"root_brep")
+        feature.Shape = fc_compound
 
-            # Remove default tools as we'll create our own later
-            # Necessary also because of  buggy FX implementation
-            tools = [tool for tool in self.job.Tools.Group]
-            for tool in tools:
-                self.job.Tools.removeObject(tool)
+        job = FCJob.Create("Job", [feature])
+        self.job = job
+        self.fc_job = job.Proxy
 
-            job.PostProcessor = "grbl"
-            job.Stock.ExtZpos = 0
-            job.Stock.ExtZneg = 0
+        # Remove default tools as we'll create our own later
+        # Necessary also because of  buggy FX implementation
+        tools = [tool for tool in self.job.Tools.Group]
+        for tool in tools:
+            self.job.Tools.removeObject(tool)
 
-            for op in self.ops:
-                op.execute(self.doc)
+        job.PostProcessor = "grbl"
+        job.Stock.ExtZpos = 0
+        job.Stock.ExtZneg = 0
 
-            self.doc.recompute()
-            self._needs_build = False
+        for op in self.ops:
+            op.execute(self.doc)
+
+        self.doc.recompute()
+        self._needs_build = False
 
     def show(self):
         if self._needs_build:
