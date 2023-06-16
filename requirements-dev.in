@@ -4,3 +4,6 @@ flake8
 Flake8-pyproject
 pytest
 pytest-cov
+sphinx
+sphinx_rtd_theme
+sphinx-tabs

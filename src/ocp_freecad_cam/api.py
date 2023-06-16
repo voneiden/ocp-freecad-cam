@@ -9,8 +9,10 @@ from typing import Literal, Optional
 import FreeCAD
 import Part
 import Path.Log as Log
+import PathScripts.PathUtils as PathUtils
 from OCP.BRepTools import BRepTools
 from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Face, TopoDS_Shape
+from Path.Dressup import DogboneII, Tags
 from Path.Main import Job as FCJob
 from Path.Post.Command import buildPostList
 from Path.Post.Processor import PostProcessor
@@ -147,8 +149,8 @@ class Job:
         tools = [tool for tool in self.job.Tools.Group]
         for tool in tools:
             self.job.Tools.removeObject(tool)
-
-        job.PostProcessor = self.postprocessor
+        if self.postprocessor:
+            job.PostProcessor = self.postprocessor
         job.Stock.ExtZpos = 0
         job.Stock.ExtZneg = 0
 
@@ -824,5 +826,114 @@ class VBit(Endmill):
         )
 
 
+class Drill(Toolbit):
+    _file_name = "drill.fcstd"
+    _prop_mapping = {
+        "chip_load": "ChipLoad",
+        "flutes": "Flutes",
+        "material": "Material",
+        "diameter": AutoUnitKey("Diameter"),
+        "length": AutoUnitKey("Length"),
+        "tip_angle": AutoUnitKey("TipAngle"),
+    }
+
+    def __init__(
+        self,
+        tool_name: str = "",
+        # Bit specific
+        diameter=None,
+        length=None,
+        tip_angle=None,
+        # Generic
+        chip_load=None,
+        flutes=None,
+        material=None,
+        # TC
+        tool_number: int = 1,
+    ):
+        super().__init__(tool_name, self._file_name, tool_number=tool_number)
+
+        self.props = map_params(
+            self._prop_mapping,
+            chip_load=chip_load,
+            flutes=flutes,
+            material=material,
+            diameter=diameter,
+            length=length,
+            tip_angle=tip_angle,
+        )
+
+
 class Bullnose(Endmill):
     pass
+
+
+class Dogbone(Dressup):
+    factory = DogboneII
+    mapping = {
+        "incision": "Incision",
+        "custom": "Custom",
+        "side": "Side",
+        "style": (
+            "Style",
+            {
+                "dogbone": "Dogbone",
+                "thor": "T-bone horizontal",
+                "tver": "T-bone vertical",
+                "tlong": "T-bone long edge",
+                "tshort": "T-bone short edge",
+            },
+        ),
+    }
+
+    def __init__(
+        self,
+        incision: Optional[Literal["adaptive", "fixed", "custom"]] = None,
+        custom: Optional[float] = None,
+        side: Optional[Literal["left", "right"]] = None,
+        style: Optional[Literal["dogbone", "thor", "tver", "tlong", "tshort"]] = None,
+    ):
+        self.params = map_params(
+            self.mapping, incision=incision, custom=custom, side=side, style=style
+        )
+
+    def create(self, base):
+        # DogboneII has this required code that exists only on the GUI side
+        fc_obj = super().create(base)
+        job = PathUtils.findParentJob(base)
+        job.Proxy.addOperation(fc_obj, base)
+        return fc_obj
+
+
+class Tab(Dressup):
+    factory = Tags
+    mapping = {
+        "angle": "Angle",
+        "height": AutoUnitKey("Height"),
+        "width": AutoUnitKey("Width"),
+        "positions": "Positions",
+        "disabled": "Disabled",
+        "fillet_radius": "Radius",
+        "segmentation_factor": "SegmentationFactor",
+    }
+
+    def __init__(
+        self,
+        angle=None,
+        height=None,
+        width=None,
+        positions=None,
+        disabled=None,
+        fillet_radius=None,
+        segmentation_factor=None,
+    ):
+        self.params = map_params(
+            self.mapping,
+            angle=angle,
+            height=height,
+            width=width,
+            positions=positions,
+            disabled=disabled,
+            fillet_radius=fillet_radius,
+            segmentation_factor=segmentation_factor,
+        )

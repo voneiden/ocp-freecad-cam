@@ -5,10 +5,19 @@ User facing API
    :members:
    :undoc-members:
 
+
+Tools
+-----
+
 .. autoclass:: ocp_freecad_cam.api.Endmill
 
 .. autoclass:: ocp_freecad_cam.api.Ballnose
 
-
-
 .. autoclass:: ocp_freecad_cam.api.VBit
+
+Dressups
+--------
+
+.. autoclass:: ocp_freecad_cam.api.Dogbone
+
+.. autoclass:: ocp_freecad_cam.api.Tab

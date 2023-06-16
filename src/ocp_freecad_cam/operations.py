@@ -15,8 +15,7 @@ from typing import TYPE_CHECKING, Literal, Optional
 import Part
 import Path.Base.SetupSheet as PathSetupSheet
 import Path.Base.Util as PathUtil
-import PathScripts.PathUtils as PathUtils
-from Path.Dressup import Boundary, DogboneII, Tags
+from Path.Dressup import Boundary
 from Path.Op import Deburr, Drilling, Helix, MillFace, PocketShape, Profile, Surface
 from Path.Op import Vcarve as FCVCarve
 
@@ -531,77 +530,6 @@ class Dressup:
 
     def create(self, base):
         return self.factory.Create(base)
-
-
-class Dogbone(Dressup):
-    factory = DogboneII
-    mapping = {
-        "incision": "Incision",
-        "custom": "Custom",
-        "side": "Side",
-        "style": (
-            "Style",
-            {
-                "dogbone": "Dogbone",
-                "thor": "T-bone horizontal",
-                "tver": "T-bone vertical",
-                "tlong": "T-bone long edge",
-                "tshort": "T-bone short edge",
-            },
-        ),
-    }
-
-    def __init__(
-        self,
-        incision: Optional[Literal["adaptive", "fixed", "custom"]] = None,
-        custom: Optional[float] = None,
-        side: Optional[Literal["left", "right"]] = None,
-        style: Optional[Literal["dogbone", "thor", "tver", "tlong", "tshort"]] = None,
-    ):
-        self.params = map_params(
-            self.mapping, incision=incision, custom=custom, side=side, style=style
-        )
-
-    def create(self, base):
-        # DogboneII has this required code that exists only on the GUI side
-        fc_obj = super().create(base)
-        job = PathUtils.findParentJob(base)
-        job.Proxy.addOperation(fc_obj, base)
-        return fc_obj
-
-
-class Tab(Dressup):
-    factory = Tags
-    mapping = {
-        "angle": "Angle",
-        "height": AutoUnitKey("Height"),
-        "width": AutoUnitKey("Width"),
-        "positions": "Positions",
-        "disabled": "Disabled",
-        "fillet_radius": "Radius",
-        "segmentation_factor": "SegmentationFactor",
-    }
-
-    def __init__(
-        self,
-        angle=None,
-        height=None,
-        width=None,
-        positions=None,
-        disabled=None,
-        fillet_radius=None,
-        segmentation_factor=None,
-    ):
-        self.params = map_params(
-            self.mapping,
-            angle=angle,
-            height=height,
-            width=width,
-            positions=positions,
-            disabled=disabled,
-            fillet_radius=fillet_radius,
-            segmentation_factor=segmentation_factor,
-        )
 
 
 class Boundary(Dressup):

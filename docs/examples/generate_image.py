@@ -76,3 +76,5 @@ def render_file(file_path, display_object_names, output_path):
 if __name__ == "__main__":
     render_file("cq_profile.py", ["wp", "job"], "images/cq_profile.png")
     render_file("cq_pocket.py", ["wp", "job"], "images/cq_pocket.png")
+    render_file("cq_drill.py", ["wp", "job"], "images/cq_drill.png")
+    render_file("cq_helix.py", ["wp", "job"], "images/cq_helix.png")
