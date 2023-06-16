@@ -1,21 +1,12 @@
-from OCP.AIS import (
-    AIS_InteractiveContext,
-    AIS_InteractiveObject,
-    AIS_Shape,
-    AIS_Shaded,
-    AIS_DisplayMode,
-)
-from OCP.Aspect import (
-    Aspect_DisplayConnection,
-    Aspect_NeutralWindow,
-    Aspect_TypeOfTriedronPosition,
-)
+from OCP.AIS import AIS_DisplayMode, AIS_InteractiveContext, AIS_Shaded, AIS_Shape
+from OCP.Aspect import Aspect_DisplayConnection, Aspect_TypeOfTriedronPosition
 from OCP.Image import Image_AlienPixMap
 from OCP.OpenGl import OpenGl_GraphicDriver
 from OCP.Quantity import Quantity_Color
 from OCP.TCollection import TCollection_AsciiString
 from OCP.V3d import V3d_Viewer
 from OCP.Xw import Xw_Window
+
 from ocp_freecad_cam.api import Job
 from ocp_freecad_cam.api_util import extract_topods_shapes
 
