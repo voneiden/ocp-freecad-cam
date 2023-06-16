@@ -16,7 +16,7 @@ def test_cq_profile(test_unit, expected_gcode_1, expected_gcode_2):
     top = box.faces(">Z").workplane()
     profile_shape = box.faces("<Z")
     tool = Endmill("1mm", diameter=1)
-    job = Job(top, box, units=test_unit)
+    job = Job(top, box, "grbl", units=test_unit)
     job = job.profile(profile_shape, tool)
     gcode = job.to_gcode()
 
