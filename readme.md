@@ -1,9 +1,32 @@
+# Overview
+
+oc-freecad-cam exposes FreeCAD's Path workbench in a fluent python API that takes
+OCP TopoDS_Shape objects and their wrappers from CadQuery and Build123d to enable generating
+parametric tool paths from the comfort of your keyboard.
+
+# Usage
+
+See documentation at 
+https://ocp-freecad-cam.readthedocs.io/en/latest/
+
 # Installation
+ocp-freecad-cam does not attempt to install runtime dependencies. Your environment must have available
+CadQuery and/or Build123d, or just OCP if you're feeling raw.
 
 ocp-freecad-cam requires currently a relatively fresh build of FreeCAD, ie. weekly build from
 https://github.com/FreeCAD/FreeCAD-Bundle/releases/tag/weekly-builds
 
 The Path module of FreeCAD has seen major refactorings in 2023 so older versions are not compatible.
+
+## Runtime dependencies summary
+* FreeCAD weekly 2023-06-04 or newer
+* [OCP](https://github.com/CadQuery/OCP)
+  * [CadQuery](https://github.com/CadQuery/cadquery)
+  * [Build123d](https://github.com/gumyr/build123d)
+
+## Dev dependecies
+
+Dev dependencies are listed in requirements-dev.txt, generated from requirements-dev.in with `pip-compile`
 
 ## Using FreeCAD AppImage
 
@@ -39,16 +62,6 @@ in a file like
 
 `/home/user/miniconda3/envs/cq/lib/python3.10/site-packages/freecad.pth`
 
-## Configuring FreeCAD
-This library configures FreeCAD on the fly and attempts to
-restore original configuration after it is done. The following 
-settings are configured automatically:
-
-* General -> Unit System
-  * For metric using: `Metric Small Parts & CNC`
-  * For imperial using: `Imperial Decimal` (or `Building US`) 
-* Path -> Advanced -> Enable OCL dependent features
-
 
 # Limitations
 
@@ -57,3 +70,15 @@ though, Surface3D can get the same things done IMO.
 
 VCarve can produce unstable toolpaths, but that is probably a bug in the underlying openvoronoi library. Tweaking the 
 job params may help.
+
+# Contributing
+
+Contributions are welcome.
+
+* Missing params, fixes
+* Tests
+* Documentation
+
+## PR's
+
+Apply black and isort and ensure that tests pass. Preferably also include test coverage for new code.
