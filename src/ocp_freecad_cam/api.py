@@ -61,6 +61,18 @@ Log._defaultLogLevel = Log.Level.DEBUG
 
 
 class Job:
+    _job_param_mapping = {"geometry_tolerance": "GeometryTolerance"}
+    _setup_sheet_param_mapping = {
+        "coolant_mode": "CoolantMode",
+        "final_depth_expression": "FinalDepthExpression",
+        "start_depth_expression": "StartDepthExpression",
+        "step_down_expression": "StepDownExpression",
+        "clearance_height_expression": "ClearanceHeightExpression",
+        "clearance_height_offset": AutoUnitKey("ClearanceHeightOffset"),
+        "safe_height_expression": "SafeHeightExpression",
+        "safe_height_offset": AutoUnitKey("SafeHeightOffset"),
+    }
+
     def __init__(
         self,
         top_plane: PlaneSource,
@@ -95,7 +107,30 @@ class Job:
         ] = None,
         units: Literal["metric", "imperial"] = "metric",
         geometry_tolerance=None,
+        coolant_mode: Literal["None", "Flood", "Mist"] = "None",
+        final_depth_expression="OpFinalDepth",
+        start_depth_expression="OpStartDepth",
+        step_down_expression="OpToolDiameter",
+        clearance_height_expression="OpStockZMax+SetupSheet.ClearanceHeightOffset",
+        clearance_height_offset="5.00 mm",
+        safe_height_expression="OpStockZMax+SetupSheet.SafeHeightOffset",
+        safe_height_offset="3.00 mm",
     ):
+        self._job_params = map_params(
+            self._job_param_mapping, geometry_tolerance=geometry_tolerance
+        )
+        self._setup_sheet_params = map_params(
+            self._setup_sheet_param_mapping,
+            coolant_mode=coolant_mode,
+            final_depth_expression=final_depth_expression,
+            start_depth_expression=start_depth_expression,
+            step_down_expression=step_down_expression,
+            clearance_height_expression=clearance_height_expression,
+            clearance_height_offset=clearance_height_offset,
+            safe_height_expression=safe_height_expression,
+            safe_height_offset=safe_height_offset,
+        )
+
         self.top_plane = extract_plane(top_plane)
 
         # Internal attributes
@@ -143,6 +178,10 @@ class Job:
         job = FCJob.Create("Job", [feature])
         self.job = job
         self.fc_job = job.Proxy
+
+        apply_params(self.job, self._job_params, self.units)
+        setup_sheet = self.job.SetupSheet
+        apply_params(setup_sheet, self._setup_sheet_params, self.units)
 
         # Remove default tools as we'll create our own later
         # Necessary also because of  buggy FX implementation
