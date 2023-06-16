@@ -251,6 +251,11 @@ class AutoUnitValue:
         return float(pq(value))
 
 
+class Expression:
+    def __init__(self, expression):
+        self.expression = expression
+
+
 ParamMapping: TypeAlias = dict[str, Union[str, AutoUnitKey, dict[str, str]]]
 
 
@@ -273,4 +278,7 @@ def apply_params(fc_obj, params, unit: Literal["metric", "imperial"]):
     for k, v in params.items():
         if isinstance(v, AutoUnitValue):
             v = v.convert(unit)
-        PathUtil.setProperty(fc_obj, k, v)
+        if isinstance(v, Expression):
+            fc_obj.setExpression(k, v)
+        else:
+            PathUtil.setProperty(fc_obj, k, v)

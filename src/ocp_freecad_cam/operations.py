@@ -29,11 +29,26 @@ class Op(ABC):
     fc_module: ModuleType
     params: ParamMapping
 
+    __param_mapping = {
+        "clearance_height": "ClearanceHeight",
+        "final_depth": "FinalDepth",
+        "safe_height": "SafeHeight",
+        "start_depth": "StartDepth",
+        "step_down": "StepDown",
+    }
+
     def __init__(
         self,
         job: "Job",
         *,
         tool,
+        # Expressions
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
+        # Brep related
         face_count: int,
         edge_count: int,
         vertex_count: int,
@@ -50,11 +65,20 @@ class Op(ABC):
         self.vertex_count = vertex_count
         self.compound_brep = compound_brep
         self.dressups = dressups or []
+        self.__params = map_params(
+            self.__param_mapping,
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
+        )
 
     def execute(self, doc):
         base_features = self.create_base_features(doc)
         op_tool_controller = self.tool.tool_controller(self.job.fc_job, self.job.units)
         fc_op = self.create_operation(base_features)
+        apply_params(fc_op, self.__params, self.job.units)
         fc_op.ToolController = op_tool_controller
         fc_op.Proxy.execute(fc_op)
         self.create_dressups(fc_op)
