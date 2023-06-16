@@ -219,7 +219,7 @@ def shape_source_to_compound_brep(
         "face_count": len(faces),
         "edge_count": len(edges),
         "vertex_count": len(vertices),
-        "compound_brep": shape_to_brep(transform_shape(compound, trsf)),
+        "compound_brep": shape_to_brep(compound),
     }
 
 
