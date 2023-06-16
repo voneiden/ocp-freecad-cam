@@ -63,6 +63,34 @@ class Job:
         self,
         top_plane: PlaneSource,
         model: CompoundSource,
+        postprocessor: Literal[
+            "KineticNCBeamicon2",
+            "centroid",
+            "comparams",
+            "dxf",
+            "dynapath",
+            "fablin",
+            "fangling",
+            "fanuc",
+            "grbl",
+            "heidenhain",
+            "jtech",
+            "linuxcnc",
+            "mach3_mach4",
+            "marlin",
+            "nccad",
+            "opensbp",
+            "philips",
+            "refactored_centroid",
+            "refactored_grbl",
+            "refactored_linuxcnc",
+            "refactored_mach3_mach4",
+            "refactored_test",
+            "rml",
+            "rrf",
+            "smoothie",
+            "uccnc",
+        ] = None,
         units: Literal["metric", "imperial"] = "metric",
         geometry_tolerance=None,
     ):
@@ -73,6 +101,7 @@ class Job:
         self.fc_job = None
         self._needs_build = True
         self.doc = None
+        self.postprocessor = postprocessor
         self.units = units
 
         # FreeCAD attributes
@@ -119,7 +148,7 @@ class Job:
         for tool in tools:
             self.job.Tools.removeObject(tool)
 
-        job.PostProcessor = "grbl"
+        job.PostProcessor = self.postprocessor
         job.Stock.ExtZpos = 0
         job.Stock.ExtZneg = 0
 
@@ -136,6 +165,10 @@ class Job:
         return visualize_fc_job(self.job, reverse_transform_tsrf(self.top_plane))
 
     def to_gcode(self):
+        if self.postprocessor is None:
+            raise ValueError(
+                "No postprocessor set - set Job postprocessor to a valid value"
+            )
         if self._needs_build:
             self._build()
 
