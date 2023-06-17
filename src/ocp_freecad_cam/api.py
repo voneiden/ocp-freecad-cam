@@ -32,6 +32,7 @@ from ocp_freecad_cam.api_util import (
 )
 from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource
 from ocp_freecad_cam.operations import (
+    AdaptiveOp,
     DeburrOp,
     Dressup,
     DrillOp,
@@ -628,6 +629,51 @@ class Job:
             internal_features_cut=internal_features_cut,
             start_point=start_point,
             scan_type=scan_type,
+            # Op
+            tool=tool,
+            **shape_source_to_compound_brep(
+                shapes, self._forward_trsf, self._scale_factor, allow_none=True
+            ),
+        )
+        self._add_op(op)
+        return self
+
+    def adaptive(
+        self,
+        shapes: Optional[ShapeSource],
+        tool: "Toolbit",
+        *,
+        finishing_profile: bool = True,
+        force_inside_cut: bool = False,
+        helix_angle: float = 5,
+        helix_cone_angle: float = 0,
+        helix_diameter_limit: float | str = 0,
+        keep_tool_down_ratio: float | str = "3.00 mm",
+        lift_distance: float | str = 0,
+        operation_type: Literal["clearing", "profiling"] = "clearing",
+        side: Literal["in", "out"] = "in",
+        step_over: float = 20,
+        stock_to_leave: float | str = 0,
+        tolerance: float = 0.1,
+        use_helix_arcs: bool = False,
+        use_outline: bool = False,
+    ):
+        op = AdaptiveOp(
+            self,
+            finishing_profile=finishing_profile,
+            force_inside_cut=force_inside_cut,
+            helix_angle=helix_angle,
+            helix_cone_angle=helix_cone_angle,
+            helix_diameter_limit=helix_diameter_limit,
+            keep_tool_down_ratio=keep_tool_down_ratio,
+            lift_distance=lift_distance,
+            operation_type=operation_type,
+            side=side,
+            step_over=step_over,
+            stock_to_leave=stock_to_leave,
+            tolerance=tolerance,
+            use_helix_arcs=use_helix_arcs,
+            use_outline=use_outline,
             # Op
             tool=tool,
             **shape_source_to_compound_brep(

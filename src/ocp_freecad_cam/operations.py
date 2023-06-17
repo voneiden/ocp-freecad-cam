@@ -16,7 +16,16 @@ import Part
 import Path.Base.SetupSheet as PathSetupSheet
 import Path.Base.Util as PathUtil
 from Path.Dressup import Boundary
-from Path.Op import Deburr, Drilling, Helix, MillFace, PocketShape, Profile, Surface
+from Path.Op import (
+    Adaptive,
+    Deburr,
+    Drilling,
+    Helix,
+    MillFace,
+    PocketShape,
+    Profile,
+    Surface,
+)
 from Path.Op import Vcarve as FCVCarve
 
 from ocp_freecad_cam.api_util import AutoUnitKey, ParamMapping, apply_params, map_params
@@ -545,6 +554,67 @@ class Surface3DOp(Op):
             internal_features_cut=internal_features_cut,
             start_point=start_point,
             scan_type=scan_type,
+        )
+
+
+class AdaptiveOp(Op):
+    fc_module = Adaptive
+    param_mapping = {
+        "finishing_profile": "FinishingProfile",
+        "force_inside_cut": "ForceInsideCut",
+        "helix_angle": "HelixAngle",
+        "helix_cone_angle": "HelixConeAngle",
+        "helix_diameter_limit": AutoUnitKey("HelixDiameterLimit"),
+        "keep_tool_down_ratio": AutoUnitKey("KeepToolDownRatio"),
+        "lift_distance": AutoUnitKey("LiftDistance"),
+        "operation_type": (
+            "OperationType",
+            {"clearing": "Clearing", "profiling": "Profiling"},
+        ),
+        "side": ("Side", {"in": "Inside", "out": "Outside"}),
+        "step_over": "StepOver",
+        "stock_to_leave": AutoUnitKey("StockToLeave"),
+        "tolerance": "Tolerance",
+        "use_helix_arcs": "UseHelixArcs",
+        "use_outline": "UseOutline",
+    }
+
+    def __init__(
+        self,
+        *args,
+        finishing_profile: bool,
+        force_inside_cut: bool,
+        helix_angle: float,
+        helix_cone_angle: float,
+        helix_diameter_limit: float | str,
+        keep_tool_down_ratio: float | str,
+        lift_distance: float | str,
+        operation_type: Literal["clearing", "profiling"],
+        side: Literal["in", "out"],
+        step_over: float,
+        stock_to_leave: float | str,
+        tolerance: float = 0,
+        use_helix_arcs: bool,
+        use_outline: bool,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.params = map_params(
+            self.param_mapping,
+            finishing_profile=finishing_profile,
+            force_inside_cut=force_inside_cut,
+            helix_angle=helix_angle,
+            helix_cone_angle=helix_cone_angle,
+            helix_diameter_limit=helix_diameter_limit,
+            keep_tool_down_ratio=keep_tool_down_ratio,
+            lift_distance=lift_distance,
+            operation_type=operation_type,
+            side=side,
+            step_over=step_over,
+            stock_to_leave=stock_to_leave,
+            tolerance=tolerance,
+            use_helix_arcs=use_helix_arcs,
+            use_outline=use_outline,
         )
 
 
