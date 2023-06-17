@@ -33,7 +33,7 @@ class VisualCommand(ABC):
         self.z = z
 
     def to_ais(self, start: "VisualCommand"):
-        raise NotImplemented
+        raise NotImplementedError
 
     def __eq__(self, other):
         if isinstance(other, VisualCommand):
@@ -65,11 +65,11 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
         self.k = k
 
     def circle_normal_dir(self, circle_normal: gp_Vec):
-        raise NotImplemented
+        raise NotImplementedError
 
     @property
     def clockwise(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def to_ais(self, start: VisualCommand):
         if self.arc_plane == (0, 0, 1):
