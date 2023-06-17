@@ -81,7 +81,9 @@ jobs:
         uses: liskin/gh-problem-matcher-wrap@v2
         with:
           linters: pytest
-          run: pytest -ra -vvv tests
+          run: pytest -ra -vvv --cov=src --cov-report xml tests
 
       - name: Codecov
         uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
