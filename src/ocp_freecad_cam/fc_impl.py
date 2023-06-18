@@ -7,15 +7,19 @@ Developer notes:
 
 
 """
-
+import tempfile
 from abc import ABC
 from types import ModuleType
 from typing import TYPE_CHECKING, Literal, Optional
 
+import FreeCAD
 import Part
 import Path.Base.SetupSheet as PathSetupSheet
 import Path.Base.Util as PathUtil
+from OCP.gp import gp_Pln
+from OCP.TopoDS import TopoDS_Compound
 from Path.Dressup import Boundary
+from Path.Main import Job as FCJob
 from Path.Op import (
     Adaptive,
     Deburr,
@@ -27,11 +31,165 @@ from Path.Op import (
     Surface,
 )
 from Path.Op import Vcarve as FCVCarve
+from Path.Post.Command import buildPostList
+from Path.Post.Processor import PostProcessor as FCPostProcessor
 
-from ocp_freecad_cam.api_util import AutoUnitKey, ParamMapping, apply_params, map_params
+from ocp_freecad_cam.api_util import (
+    AutoUnitKey,
+    CompoundData,
+    ParamMapping,
+    apply_params,
+    map_params,
+    scale_shape,
+    shape_to_brep,
+    transform_shape,
+)
+from ocp_freecad_cam.common import PostProcessor
+from ocp_freecad_cam.fc_impl_util import calculate_transforms
+from ocp_freecad_cam.visualizer import visualize_fc_job
 
 if TYPE_CHECKING:
     from api import Job
+
+
+class JobImpl:
+    _job_param_mapping = {"geometry_tolerance": "GeometryTolerance"}
+    _setup_sheet_param_mapping = {
+        "coolant_mode": "CoolantMode",
+        "final_depth_expression": "FinalDepthExpression",
+        "start_depth_expression": "StartDepthExpression",
+        "step_down_expression": "StepDownExpression",
+        "clearance_height_expression": "ClearanceHeightExpression",
+        "clearance_height_offset": AutoUnitKey("ClearanceHeightOffset"),
+        "safe_height_expression": "SafeHeightExpression",
+        "safe_height_offset": AutoUnitKey("SafeHeightOffset"),
+    }
+
+    def __init__(
+        self,
+        *,
+        top: gp_Pln,
+        model: TopoDS_Compound,
+        post_processor: Optional[PostProcessor],
+        units: Literal["metric", "imperial"],
+        geometry_tolerance,
+        coolant_mode,
+        final_depth_expression,
+        start_depth_expression,
+        step_down_expression,
+        clearance_height_expression,
+        clearance_height_offset,
+        safe_height_expression,
+        safe_height_offset,
+    ):
+        self.top = top
+        self.forward, self.backward = calculate_transforms(top)
+        self.units = units
+
+        self.model = model
+        transformed_job_model = transform_shape(model, self.forward)
+        if sf := self.scale_factor:
+            transformed_job_model = scale_shape(transformed_job_model, sf)
+
+        self.model_brep = shape_to_brep(transformed_job_model)
+
+        self.post_processor = post_processor
+
+        self.job_params = map_params(
+            self._job_param_mapping, geometry_tolerance=geometry_tolerance
+        )
+
+        self.setup_sheet_params = map_params(
+            self._setup_sheet_param_mapping,
+            coolant_mode=coolant_mode,
+            final_depth_expression=final_depth_expression,
+            start_depth_expression=start_depth_expression,
+            step_down_expression=step_down_expression,
+            clearance_height_expression=clearance_height_expression,
+            clearance_height_offset=clearance_height_offset,
+            safe_height_expression=safe_height_expression,
+            safe_height_offset=safe_height_offset,
+        )
+
+        # TODO Stock
+
+        self.doc = None
+        self.ops = []
+
+    @property
+    def scale_factor(self):
+        if self.units == "metric":
+            return None
+        elif self.units == "imperial":
+            return 25.4
+        raise ValueError(f"Unknown unit: ({self.units})")
+
+    def _set_active(self):
+        FreeCAD.setActiveDocument(self.doc.Name)
+
+    def _build(self, rebuild=False):
+        if self.doc:
+            if not rebuild:
+                return
+            FreeCAD.closeDocument(self.doc)
+
+        self.doc = FreeCAD.newDocument("ocp_freecad_cam")
+        self._set_active()
+        fc_compound = Part.Compound()
+        fc_compound.importBrepFromString(self.model_brep)
+        feature = self.doc.addObject("Part::Feature", f"root_brep")
+        feature.Shape = fc_compound
+
+        job = FCJob.Create("Job", [feature])
+        self.job = job
+        self.fc_job = job.Proxy
+
+        apply_params(self.job, self.job_params, self.units)
+        setup_sheet = self.job.SetupSheet
+        apply_params(setup_sheet, self.setup_sheet_params, self.units)
+
+        # Remove default tools as we'll create our own later
+        # Necessary also because of  buggy FX implementation
+        tools = [tool for tool in self.job.Tools.Group]
+        for tool in tools:
+            self.job.Tools.removeObject(tool)
+        if self.post_processor:
+            job.PostProcessor = self.post_processor
+        job.Stock.ExtZpos = 0
+        job.Stock.ExtZneg = 0
+
+        for op in self.ops:
+            op.execute(self.doc)
+
+        self.doc.recompute()
+
+    def save_fcstd(self, filename, rebuild=False):
+        self._build(rebuild)
+        self.doc.saveAs(filename)
+
+    def to_gcode(self, rebuild=False):
+        if self.post_processor is None:
+            raise ValueError(
+                "No postprocessor set - set Job postprocessor to a valid value"
+            )
+        self._build(rebuild)
+        job = self.job
+        postlist = buildPostList(job)
+        processor = FCPostProcessor.load(job.PostProcessor)
+
+        for idx, section in enumerate(postlist):
+            name, sublist = section
+            with tempfile.NamedTemporaryFile() as tmp_file:
+                options = ["--no-show-editor"]
+                if self.units == "imperial":
+                    options.append("--inches")
+
+                gcode = processor.export(sublist, tmp_file.name, " ".join(options))
+                return gcode
+
+    def show(self, rebuild=False):
+        self._build(rebuild)
+        return visualize_fc_job(self.job, self.backward)
 
 
 class Op(ABC):
@@ -51,28 +209,25 @@ class Op(ABC):
         job: "Job",
         *,
         tool,
+        compound_data: CompoundData,
+        name=None,
         # Expressions
         clearance_height=None,
         final_depth=None,
         safe_height=None,
         start_depth=None,
         step_down=None,
-        # Brep related
-        face_count: int,
-        edge_count: int,
-        vertex_count: int,
-        compound_brep: str,
-        name=None,
         dressups: Optional[list["Dressup"]] = None,
     ):
         self.job = job
         self.n = len(self.job.ops) + 1
         self.name = name
         self.tool = tool
-        self.face_count = face_count
-        self.edge_count = edge_count
-        self.vertex_count = vertex_count
-        self.compound_brep = compound_brep
+        self.compound_data = compound_data
+        self.compound_brep = compound_data.to_transformed_brep(
+            self.job.job_impl.forward, self.job.job_impl.scale_factor
+        )
+
         self.dressups = dressups or []
         self.__params = map_params(
             self.__param_mapping,
@@ -85,30 +240,36 @@ class Op(ABC):
 
     def execute(self, doc):
         base_features = self.create_base_features(doc)
-        op_tool_controller = self.tool.tool_controller(self.job.fc_job, self.job.units)
+        # TODO refactor this spaghetti
+        op_tool_controller = self.tool.tool_controller(
+            self.job.job_impl.fc_job, self.job.job_impl.units
+        )
         fc_op = self.create_operation(base_features)
-        apply_params(fc_op, self.__params, self.job.units)
+        apply_params(fc_op, self.__params, self.job.job_impl.units)
         fc_op.ToolController = op_tool_controller
         fc_op.Proxy.execute(fc_op)
         self.create_dressups(fc_op)
 
     def create_base_features(self, doc):
-        if self.compound_brep is None:
+        compound_brep = self.compound_data.to_transformed_brep(
+            self.job.job_impl.forward, self.job.job_impl.scale_factor
+        )
+        if compound_brep is None:
             return []
 
         fc_compound = Part.Compound()
-        fc_compound.importBrepFromString(self.compound_brep)
+        fc_compound.importBrepFromString(compound_brep)
         feature = doc.addObject("Part::Feature", f"op_brep_{self.n}")
         feature.Shape = fc_compound
 
         base_features = []
         sub_selectors = []
 
-        for i in range(1, self.face_count + 1):
+        for i in range(1, self.compound_data.face_count + 1):
             sub_selectors.append(f"Face{i}")
-        for i in range(1, self.edge_count + 1):
+        for i in range(1, self.compound_data.edge_count + 1):
             sub_selectors.append(f"Edge{i}")
-        for i in range(1, self.vertex_count + 1):
+        for i in range(1, self.compound_data.vertex_count + 1):
             sub_selectors.append(f"Vertex{i}")
 
         base_features.append((feature, tuple(sub_selectors)))
@@ -121,7 +282,7 @@ class Op(ABC):
         )
         fc_op = self.fc_module.Create(name)
         fc_op.Base = base_features
-        apply_params(fc_op, self.params, self.job.units)
+        apply_params(fc_op, self.params, self.job.job_impl.units)  # TODO
         return fc_op
 
     def create_dressups(self, fc_op):

@@ -15,7 +15,7 @@ from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Face, TopoDS_Shap
 from Path.Dressup import DogboneII, Tags
 from Path.Main import Job as FCJob
 from Path.Post.Command import buildPostList
-from Path.Post.Processor import PostProcessor
+from Path.Post.Processor import PostProcessor as FCPostProcessor
 from Path.Tool import Bit, Controller
 
 from ocp_freecad_cam.api_util import (
@@ -23,21 +23,24 @@ from ocp_freecad_cam.api_util import (
     CompoundSource,
     ShapeSource,
     apply_params,
+    extract_plane,
     extract_topods_shapes,
     map_params,
     scale_shape,
+    shape_source_to_compound,
     shape_source_to_compound_brep,
     shape_to_brep,
     transform_shape,
 )
-from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource
-from ocp_freecad_cam.operations import (
+from ocp_freecad_cam.common import FaceSource, Plane, PlaneSource, PostProcessor
+from ocp_freecad_cam.fc_impl import (
     AdaptiveOp,
     DeburrOp,
     Dressup,
     DrillOp,
     FaceOp,
     HelixOp,
+    JobImpl,
     Op,
     PocketOp,
     ProfileOp,
@@ -78,34 +81,7 @@ class Job:
         self,
         top_plane: PlaneSource,
         model: CompoundSource,
-        postprocessor: Literal[
-            "KineticNCBeamicon2",
-            "centroid",
-            "comparams",
-            "dxf",
-            "dynapath",
-            "fablin",
-            "fangling",
-            "fanuc",
-            "grbl",
-            "heidenhain",
-            "jtech",
-            "linuxcnc",
-            "mach3_mach4",
-            "marlin",
-            "nccad",
-            "opensbp",
-            "philips",
-            "refactored_centroid",
-            "refactored_grbl",
-            "refactored_linuxcnc",
-            "refactored_mach3_mach4",
-            "refactored_test",
-            "rml",
-            "rrf",
-            "smoothie",
-            "uccnc",
-        ] = None,
+        post_processor: PostProcessor = None,
         units: Literal["metric", "imperial"] = "metric",
         geometry_tolerance=None,
         coolant_mode: Literal["None", "Flood", "Mist"] = "None",
@@ -118,10 +94,21 @@ class Job:
         safe_height_offset="3.00 mm",
     ):
         self._job_params = map_params(
-            self._job_param_mapping, geometry_tolerance=geometry_tolerance
+            self._job_param_mapping,
         )
-        self._setup_sheet_params = map_params(
-            self._setup_sheet_param_mapping,
+
+        model_compounds = extract_topods_shapes(model, compound=True)
+        if (model_count := len(model_compounds)) != 1:
+            raise ValueError(
+                f"Job should be based around a single compound (got {model_count})"
+            )
+
+        self.job_impl = JobImpl(
+            top=extract_plane(top_plane),
+            model=model_compounds[0],
+            post_processor=post_processor,
+            units=units,
+            geometry_tolerance=geometry_tolerance,
             coolant_mode=coolant_mode,
             final_depth_expression=final_depth_expression,
             start_depth_expression=start_depth_expression,
@@ -131,119 +118,33 @@ class Job:
             safe_height_expression=safe_height_expression,
             safe_height_offset=safe_height_offset,
         )
-
-        self.top_plane = extract_plane(top_plane)
-
         # Internal attributes
         self.ops: list[Op] = []
-        self.fc_job = None
-        self._needs_build = True
-        self.doc = None
-        self.postprocessor = postprocessor
-        self.units = units
-
-        # FreeCAD attributes
-        self.geometry_tolerance = geometry_tolerance
-
-        # Prepare job model
-        model_compounds = extract_topods_shapes(model, compound=True)
-        if (model_count := len(model_compounds)) != 1:
-            raise ValueError(
-                f"Job should be based around a single compound (got {model_count})"
-            )
-        transformed_job_model = transform_shape(model_compounds[0], self._forward_trsf)
-        if sf := self._scale_factor:
-            transformed_job_model = scale_shape(transformed_job_model, sf)
-
-        self.job_obj_brep = shape_to_brep(transformed_job_model)
-
-    @property
-    def _scale_factor(self):
-        if self.units == "metric":
-            return None
-        elif self.units == "imperial":
-            return 25.4
-        raise ValueError(f"Unknown unit: ({self.units})")
-
-    def _build(self):
-        if self.doc:
-            FreeCAD.closeDocument(self.doc)
-
-        self.doc = FreeCAD.newDocument("ocp_freecad_cam")
-        self.set_active()
-        fc_compound = Part.Compound()
-        fc_compound.importBrepFromString(self.job_obj_brep)
-        feature = self.doc.addObject("Part::Feature", f"root_brep")
-        feature.Shape = fc_compound
-
-        job = FCJob.Create("Job", [feature])
-        self.job = job
-        self.fc_job = job.Proxy
-
-        apply_params(self.job, self._job_params, self.units)
-        setup_sheet = self.job.SetupSheet
-        apply_params(setup_sheet, self._setup_sheet_params, self.units)
-
-        # Remove default tools as we'll create our own later
-        # Necessary also because of  buggy FX implementation
-        tools = [tool for tool in self.job.Tools.Group]
-        for tool in tools:
-            self.job.Tools.removeObject(tool)
-        if self.postprocessor:
-            job.PostProcessor = self.postprocessor
-        job.Stock.ExtZpos = 0
-        job.Stock.ExtZneg = 0
-
-        for op in self.ops:
-            op.execute(self.doc)
-
-        self.doc.recompute()
-        self._needs_build = False
+        self._needs_rebuild = True
 
     def show(self):
-        if self._needs_build:
-            self._build()
-
-        return visualize_fc_job(self.job, reverse_transform_tsrf(self.top_plane))
+        self.job_impl.ops = self.ops  # TODO HACK
+        ais = self.job_impl.show(self._needs_rebuild)
+        self._needs_rebuild = False
+        return ais
 
     def to_gcode(self):
-        if self.postprocessor is None:
-            raise ValueError(
-                "No postprocessor set - set Job postprocessor to a valid value"
-            )
-        if self._needs_build:
-            self._build()
-
-        job = self.job
-        postlist = buildPostList(job)
-        processor = PostProcessor.load(job.PostProcessor)
-
-        for idx, section in enumerate(postlist):
-            name, sublist = section
-            with tempfile.NamedTemporaryFile() as tmp_file:
-                options = ["--no-show-editor"]
-                if self.units == "imperial":
-                    options.append("--inches")
-
-                gcode = processor.export(sublist, tmp_file.name, " ".join(options))
-                return gcode
+        self.job_impl.ops = self.ops  # TODO HACK
+        gcode = self.job_impl.to_gcode(self._needs_rebuild)
+        self._needs_rebuild = False
+        return gcode
 
     def save_fcstd(self, filename="debug.fcstd"):
-        if self._needs_build:
-            self._build()
-
-        self.doc.saveAs(filename)
+        self.job_impl.ops = self.ops  # TODO HACK
+        rv = self.job_impl.save_fcstd(filename)
+        self._needs_rebuild = False
+        return rv
 
     def _add_op(self, op: Op):
-        self._needs_build = True
+        # TODO make this immutable
+        # TODO should also clone job_impl with None doc
+        self._needs_rebuild = True
         self.ops.append(op)
-
-    def set_active(self):
-        FreeCAD.setActiveDocument(self.doc.Name)
-
-    @property
-    def _forward_trsf(self):
-        return forward_transform_tsrf(self.top_plane)
 
     def profile(
         self,
@@ -305,9 +206,7 @@ class Job:
             # Op settings
             tool=tool,
             dressups=dressups or [],
-            **shape_source_to_compound_brep(
-                shapes, self._forward_trsf, self._scale_factor
-            ),
+            compound_data=shape_source_to_compound(shapes),
         )
         self._add_op(op)
         return self
@@ -346,8 +245,8 @@ class Job:
             exclude_raised=exclude_raised,
             pattern=pattern,
             tool=tool,
-            **shape_source_to_compound_brep(
-                shapes, self._forward_trsf, self._scale_factor
+            compound_data=shape_source_to_compound(
+                shapes,
             ),
             **kwargs,
         )
@@ -413,9 +312,7 @@ class Job:
             # OP settings
             tool=tool,
             dressups=dressups or [],
-            **shape_source_to_compound_brep(
-                shapes, self._forward_trsf, self._scale_factor
-            ),
+            compound_data=shape_source_to_compound(shapes),
         )
         self._add_op(op)
         return self
@@ -457,9 +354,7 @@ class Job:
             keep_tool_down=keep_tool_down,
             retract_height=retract_height,
             chip_break_enabled=chip_break_enabled,
-            **shape_source_to_compound_brep(
-                shapes, self._forward_trsf, self._scale_factor
-            ),
+            compound_data=shape_source_to_compound(shapes),
             **kwargs,
         )
         self._add_op(op)
@@ -501,8 +396,8 @@ class Job:
             step_over=step_over,
             # Op
             tool=tool,
-            **shape_source_to_compound_brep(
-                shapes, self._forward_trsf, self._scale_factor
+            compound_data=shape_source_to_compound(
+                shapes,
             ),
             **kwargs,
         )
@@ -527,9 +422,7 @@ class Job:
             entry_point=entry_point,
             # Op
             tool=tool,
-            **shape_source_to_compound_brep(
-                shapes, self._forward_trsf, self._scale_factor
-            ),
+            compound_data=shape_source_to_compound(shapes),
         )
         self._add_op(op)
         return self
@@ -561,9 +454,7 @@ class Job:
             colinear=colinear,
             # Op
             tool=tool,
-            **shape_source_to_compound_brep(
-                shapes, self._forward_trsf, self._scale_factor
-            ),
+            compound_data=shape_source_to_compound(shapes),
         )
         self._add_op(op)
         return self
@@ -631,9 +522,7 @@ class Job:
             scan_type=scan_type,
             # Op
             tool=tool,
-            **shape_source_to_compound_brep(
-                shapes, self._forward_trsf, self._scale_factor, allow_none=True
-            ),
+            compound_data=shape_source_to_compound(shapes, allow_none=True),
         )
         self._add_op(op)
         return self
@@ -676,38 +565,38 @@ class Job:
             use_outline=use_outline,
             # Op
             tool=tool,
-            **shape_source_to_compound_brep(
-                shapes, self._forward_trsf, self._scale_factor, allow_none=True
+            compound_data=shape_source_to_compound(
+                shapes,
             ),
         )
         self._add_op(op)
         return self
 
 
-def extract_plane(plane_source: PlaneSource) -> Plane:
-    if cq:
-        # ace.transformShape(job.top.fG)
-        if isinstance(plane_source, cq.Workplane):
-            return plane_source.plane
-
-        elif isinstance(plane_source, cq.Plane):
-            return plane_source
-
-        elif isinstance(plane_source, cq.Face):
-            gp_pln = plane_source.toPln()
-            ax3 = gp_pln.Position()
-            origin = cq.Vector(ax3.Location())
-            x_dir = cq.Vector(ax3.XDirection())
-            normal = cq.Vector(ax3.Direction())
-            return cq.Plane(origin, x_dir, normal)
-
-    if b3d:
-        if isinstance(plane_source, b3d.Plane):
-            return plane_source
-        elif isinstance(plane_source, b3d.Face):
-            return b3d.Plane(face=plane_source)
-
-    raise ValueError(f"Unknown type of plane: {type(plane_source)}")
+# def extract_plane(plane_source: PlaneSource) -> Plane:
+#    if cq:
+#        # ace.transformShape(job.top.fG)
+#        if isinstance(plane_source, cq.Workplane):
+#            return plane_source.plane
+#
+#        elif isinstance(plane_source, cq.Plane):
+#            return plane_source
+#
+#        elif isinstance(plane_source, cq.Face):
+#            gp_pln = plane_source.toPln()
+#            ax3 = gp_pln.Position()
+#            origin = cq.Vector(ax3.Location())
+#            x_dir = cq.Vector(ax3.XDirection())
+#            normal = cq.Vector(ax3.Direction())
+#            return cq.Plane(origin, x_dir, normal)
+#
+#    if b3d:
+#        if isinstance(plane_source, b3d.Plane):
+#            return plane_source
+#        elif isinstance(plane_source, b3d.Face):
+#            return b3d.Plane(face=plane_source)
+#
+#    raise ValueError(f"Unknown type of plane: {type(plane_source)}")
 
 
 def forward_transform(plane: Plane, shape: TopoDS_Shape) -> TopoDS_Shape:

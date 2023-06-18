@@ -1,11 +1,12 @@
 import io
+from dataclasses import dataclass
 from typing import Literal, Optional, TypeAlias, Union
 
 import FreeCAD
 import Path.Base.Util as PathUtil
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCP.BRepTools import BRepTools
-from OCP.gp import gp_Pnt, gp_Trsf
+from OCP.gp import gp_Ax3, gp_GTrsf, gp_Pln, gp_Pnt, gp_Trsf
 from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_ShapeEnum
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopoDS import (
@@ -18,6 +19,8 @@ from OCP.TopoDS import (
     TopoDS_Vertex,
     TopoDS_Wire,
 )
+
+from ocp_freecad_cam.common import PlaneSource
 
 try:
     import cadquery as cq
@@ -223,6 +226,51 @@ def shape_source_to_compound_brep(
     }
 
 
+@dataclass
+class CompoundData:
+    face_count: int
+    edge_count: int
+    vertex_count: int
+    compound: Optional[TopoDS_Compound]
+
+    def to_transformed_brep(self, trsf: gp_Trsf, scale_factor: float = None):
+        compound = transform_shape(self.compound, trsf)
+        if scale_factor:
+            compound = scale_shape(compound, scale_factor)
+        return shape_to_brep(compound)
+
+
+def shape_source_to_compound(
+    shape_source: ShapeSourceOrIterable,
+    allow_none=False,
+) -> CompoundData:
+    if allow_none and shape_source is None:
+        return CompoundData(0, 0, 0, None)
+
+    shapes = extract_topods_shapes(shape_source)
+    if not shapes:
+        shapes = extract_topods_shapes(shape_source, True)
+    faces, edges, vertices = split_shapes_by_type(shapes)
+
+    if not faces and not edges and not vertices:
+        raise ValueError("Empty ShapeSource")
+
+    compound = TopoDS_Compound()
+    builder = TopoDS_Builder()
+    builder.MakeCompound(compound)
+
+    for face in faces:
+        builder.Add(compound, face)
+
+    for edge in edges:
+        builder.Add(compound, edge)
+
+    for vertex in vertices:
+        builder.Add(compound, vertex)
+
+    return CompoundData(len(faces), len(edges), len(vertices), compound)
+
+
 class AutoUnitKey:
     def __init__(self, key):
         self.key = key
@@ -282,3 +330,23 @@ def apply_params(fc_obj, params, unit: Literal["metric", "imperial"]):
             fc_obj.setExpression(k, v)
         else:
             PathUtil.setProperty(fc_obj, k, v)
+
+
+def extract_plane(plane_source: PlaneSource) -> gp_Pln:
+    if cq:
+        if isinstance(plane_source, cq.Workplane):
+            return plane_source.plane.toPln()
+
+        elif isinstance(plane_source, (cq.Plane, cq.Face)):
+            return plane_source.toPln()
+
+    if b3d:
+        if isinstance(plane_source, b3d.Plane):
+            return plane_source.wrapped
+        elif isinstance(plane_source, b3d.Face):
+            return b3d.Plane(face=plane_source).wrapped
+
+    if isinstance(plane_source, gp_Pln):
+        return plane_source
+
+    raise ValueError(f"Unknown type of plane: {type(plane_source)}")
