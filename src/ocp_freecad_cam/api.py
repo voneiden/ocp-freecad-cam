@@ -723,6 +723,34 @@ class Drill(Toolbit):
         )
 
 
+class Probe(Toolbit):
+    _file_name = "probe.fcstd"
+    _prop_mapping = {
+        "diameter": AutoUnitKey("Diameter"),
+        "length": AutoUnitKey("Length"),
+        "shank_diameter": AutoUnitKey("Shank Diameter"),
+    }
+
+    def __init__(
+        self,
+        tool_name: str = "",
+        # Bit specific
+        diameter=None,
+        length=None,
+        shank_diameter=None,
+        # TC
+        tool_number: int = 1,
+    ):
+        super().__init__(tool_name, self._file_name, tool_number=tool_number)
+
+        self.props = map_params(
+            self._prop_mapping,
+            diameter=diameter,
+            length=length,
+            shank_diameter=shank_diameter,
+        )
+
+
 class Bullnose(Endmill):
     pass
 
