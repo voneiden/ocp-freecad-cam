@@ -34,6 +34,7 @@ from ocp_freecad_cam.fc_impl import (
     ProfileOp,
     Surface3DOp,
     VCarveOp,
+    WaterlineOp,
 )
 
 try:
@@ -492,6 +493,35 @@ class Job:
             internal_features_cut=internal_features_cut,
             start_point=start_point,
             scan_type=scan_type,
+            # Op
+            tool=tool,
+            compound_data=shape_source_to_compound(shapes, allow_none=True),
+        )
+        return self._add_op(op)
+
+    def waterline(
+        self,
+        shapes: Optional[ShapeSource],
+        tool: "Toolbit",
+        *,
+        algorithm: Literal["ocl", "experimental"] = "ocl",
+        bound_box: Literal["base", "stock"] = "base",
+        cut_mode: Literal["climb", "conventional"] = "climb",
+        depth_offset: float | str = 0,
+        layer_mode: Literal["single", "multi"] = "single",
+        sample_interval: float | str = "1.00 mm",
+        angular_deflection: float | str = "0.25 mm",
+        linear_deflection: float | str = "0.01 mm",
+    ):
+        op = WaterlineOp(
+            algorithm=algorithm,
+            bound_box=bound_box,
+            cut_mode=cut_mode,
+            depth_offset=depth_offset,
+            layer_mode=layer_mode,
+            sample_interval=sample_interval,
+            angular_deflection=angular_deflection,
+            linear_deflection=linear_deflection,
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(shapes, allow_none=True),

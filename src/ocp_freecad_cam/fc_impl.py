@@ -32,6 +32,7 @@ from Path.Op import (
     Surface,
 )
 from Path.Op import Vcarve as FCVCarve
+from Path.Op import Waterline
 from Path.Post.Command import buildPostList
 from Path.Post.Processor import PostProcessor as FCPostProcessor
 
@@ -708,6 +709,49 @@ class Surface3DOp(Op):
             internal_features_cut=internal_features_cut,
             start_point=start_point,
             scan_type=scan_type,
+        )
+
+
+class WaterlineOp(Op):
+    fc_module = Waterline
+    param_mapping = {
+        "algorithm": (
+            "Algorithm",
+            {"ocl": "OCL Dropcutter", "experimental": "Experimental"},
+        ),
+        "bound_box": ("BoundBox", {"base": "BaseBoundBox", "stock": "Stock"}),
+        "cut_mode": ("CutMode", {"climb": "Climb", "conventional": "Conventional"}),
+        "depth_offset": AutoUnitKey("DepthOffset"),
+        "layer_mode": ("LayerMode", {"single": "Single-pass", "multi": "Multi-pass"}),
+        "sample_interval": AutoUnitKey("SampleInterval"),
+        "angular_deflection": AutoUnitKey("AngularDeflection"),
+        "linear_deflection": AutoUnitKey("LinearDeflection"),
+    }
+
+    def __init__(
+        self,
+        *args,
+        algorithm: Literal["ocl", "experimental"],
+        bound_box: Literal["base", "stock"],
+        cut_mode: Literal["climb", "conventional"],
+        depth_offset: float | str,
+        layer_mode: Literal["single", "multi"],
+        sample_interval: float | str,
+        angular_deflection: float | str,
+        linear_deflection: float | str,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.params = map_params(
+            self.param_mapping,
+            algorithm=algorithm,
+            bound_box=bound_box,
+            cut_mode=cut_mode,
+            depth_offset=depth_offset,
+            layer_mode=layer_mode,
+            sample_interval=sample_interval,
+            angular_deflection=angular_deflection,
+            linear_deflection=linear_deflection,
         )
 
 

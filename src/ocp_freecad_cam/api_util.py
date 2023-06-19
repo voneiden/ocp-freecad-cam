@@ -233,7 +233,11 @@ class CompoundData:
     vertex_count: int
     compound: Optional[TopoDS_Compound]
 
-    def to_transformed_brep(self, trsf: gp_Trsf, scale_factor: float = None):
+    def to_transformed_brep(
+        self, trsf: gp_Trsf, scale_factor: float = None
+    ) -> Optional[str]:
+        if self.compound is None:
+            return None
         compound = transform_shape(self.compound, trsf)
         if scale_factor:
             compound = scale_shape(compound, scale_factor)
