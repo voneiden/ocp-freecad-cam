@@ -52,7 +52,7 @@ from ocp_freecad_cam.fc_impl_util import calculate_transforms
 from ocp_freecad_cam.visualizer import visualize_fc_job
 
 if TYPE_CHECKING:
-    from api import Job # noqa
+    from api import Job  # noqa
 
 
 class JobImpl:
