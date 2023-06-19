@@ -21,6 +21,7 @@ from OCP.gp import gp_Pln
 from OCP.TopoDS import TopoDS_Compound
 from Path.Dressup import Boundary
 from Path.Main import Job as FCJob
+from Path.Main import Stock as FCStock
 from Path.Op import (
     Adaptive,
     Deburr,
@@ -83,6 +84,7 @@ class JobImpl:
         clearance_height_offset,
         safe_height_expression,
         safe_height_offset,
+        stock,
     ):
         self.top = top
         self.forward, self.backward = calculate_transforms(top)
@@ -113,8 +115,7 @@ class JobImpl:
             safe_height_offset=safe_height_offset,
         )
 
-        # TODO Stock
-
+        self.stock = stock
         self.doc = None
         self.ops = []
 
@@ -149,6 +150,9 @@ class JobImpl:
         setup_sheet = self.fc_job.SetupSheet
         apply_params(setup_sheet, self.setup_sheet_params, self.units)
 
+        if self.stock:
+            self.stock.create_stock(self)
+
         # Remove default tools as we'll create our own later
         # Necessary also because of  buggy FX implementation
         tools = [tool for tool in self.fc_job.Tools.Group]
@@ -156,8 +160,6 @@ class JobImpl:
             self.fc_job.Tools.removeObject(tool)
         if self.post_processor:
             fc_job.PostProcessor = self.post_processor
-        fc_job.Stock.ExtZpos = 0
-        fc_job.Stock.ExtZneg = 0
 
         for op in self.ops:
             op.execute(self)
@@ -828,3 +830,48 @@ class Boundary(Dressup):
     factory = Boundary
 
     # TODO
+
+
+class StockBase(ABC):
+    def create_stock(self, fc_job: FCJob):
+        raise NotImplementedError
+
+
+class Stock(StockBase):
+    """Simple extent based stock"""
+
+    _param_mapping = {
+        "xn": AutoUnitKey("ExtXneg"),
+        "xp": AutoUnitKey("ExtXpos"),
+        "yn": AutoUnitKey("ExtYneg"),
+        "yp": AutoUnitKey("ExtYpos"),
+        "zn": AutoUnitKey("ExtZneg"),
+        "zp": AutoUnitKey("ExtZpos"),
+    }
+
+    def __init__(
+        self,
+        xn: float | str = None,
+        xp: float | str = None,
+        yn: float | str = None,
+        yp: float | str = None,
+        zn: float | str = None,
+        zp: float | str = None,
+    ):
+        self.params = map_params(
+            self._param_mapping,
+            xn=xn,
+            xp=xp,
+            yn=yn,
+            yp=yp,
+            zn=zn,
+            zp=zp,
+        )
+        self.fc_stock = None
+
+    def create_stock(self, job_impl: JobImpl):
+        fc_job = job_impl.fc_job
+        job_impl.doc.removeObject(fc_job.Stock.Name)
+        fc_stock = FCStock.CreateFromBase(job_impl.fc_job)
+        apply_params(fc_stock, self.params, job_impl.units)
+        PathUtil.setProperty(job_impl.fc_job, "Stock", fc_stock)
