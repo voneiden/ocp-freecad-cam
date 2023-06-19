@@ -2,6 +2,7 @@ import cadquery as cq
 
 from ocp_freecad_cam.api import Drill, Job
 
+
 def test_drill():
     wp = (
         cq.Workplane()
