@@ -789,7 +789,93 @@ class SlittingSaw(Toolbit):
 
 
 class Bullnose(Endmill):
-    pass
+    _file_name = "bullnose.fcstd"
+    _prop_mapping = {
+        **Endmill._prop_mapping,
+        "flat_radius": AutoUnitKey("FlatRadius"),
+    }
+
+    def __init__(
+        self,
+        tool_name: str = "",
+        # Generic
+        chip_load=None,
+        flutes=None,
+        material=None,
+        spindle_direction=None,
+        # Bit specific
+        cutting_edge_height=None,
+        diameter=None,
+        length=None,
+        shank_diameter=None,
+        flat_radius=None,
+        # TC
+        tool_number: int = 1,
+    ):
+        super().__init__(tool_name, self._file_name, tool_number=tool_number)
+        self.props = map_params(
+            self._prop_mapping,
+            chip_load=chip_load,
+            flutes=flutes,
+            material=material,
+            spindle_direction=spindle_direction,
+            cutting_edge_height=cutting_edge_height,
+            diameter=diameter,
+            length=length,
+            shank_diameter=shank_diameter,
+            flat_radius=flat_radius,
+        )
+
+
+class ThreadMill(Toolbit):
+    _file_name = "bullnose.fcstd"
+    _prop_mapping = {
+        "chip_load": "ChipLoad",
+        "flutes": "Flutes",
+        "material": "Material",
+        "crest": AutoUnitKey("Crest"),
+        "diameter": AutoUnitKey("Diameter"),
+        "length": AutoUnitKey("Length"),
+        "neck_diameter": AutoUnitKey("NeckDiameter"),
+        "neck_length": AutoUnitKey("NeckLength"),
+        "shank_diameter": AutoUnitKey("ShankDiameter"),
+        "cutting_angle": "cuttingAngle",
+    }
+
+    def __init__(
+        self,
+        tool_name: str = "",
+        # Generic
+        chip_load=None,
+        flutes=None,
+        material=None,
+        spindle_direction=None,
+        # Bit specific
+        crest=None,
+        diameter=None,
+        length=None,
+        neck_diameter=None,
+        neck_length=None,
+        shank_diameter=None,
+        cutting_angle=None,
+        # TC
+        tool_number: int = 1,
+    ):
+        super().__init__(tool_name, self._file_name, tool_number=tool_number)
+        self.props = map_params(
+            self._prop_mapping,
+            chip_load=chip_load,
+            flutes=flutes,
+            material=material,
+            spindle_direction=spindle_direction,
+            crest=crest,
+            diameter=diameter,
+            length=length,
+            neck_diameter=neck_diameter,
+            neck_length=neck_length,
+            shank_diameter=shank_diameter,
+            cutting_angle=cutting_angle,
+        )
 
 
 class Dogbone(Dressup):
