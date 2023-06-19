@@ -18,7 +18,7 @@ def test_drill():
     hole_edges = wp.faces("<Z").objects[0].innerWires()
 
     tool = Drill(diameter="1 mm")
-    job = Job(top, wp)
+    job = Job(top, wp, "grbl")
     job = job.drill(hole_edges, tool)
     job.to_gcode()
     job.show()
