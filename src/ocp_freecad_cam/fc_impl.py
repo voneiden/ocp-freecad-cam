@@ -141,23 +141,22 @@ class JobImpl:
         feature = self.doc.addObject("Part::Feature", f"root_brep")
         feature.Shape = fc_compound
 
-        job = FCJob.Create("Job", [feature])
-        self.job = job
-        self.fc_job = job.Proxy
+        fc_job = FCJob.Create("Job", [feature])
+        self.fc_job = fc_job
 
-        apply_params(self.job, self.job_params, self.units)
-        setup_sheet = self.job.SetupSheet
+        apply_params(self.fc_job, self.job_params, self.units)
+        setup_sheet = self.fc_job.SetupSheet
         apply_params(setup_sheet, self.setup_sheet_params, self.units)
 
         # Remove default tools as we'll create our own later
         # Necessary also because of  buggy FX implementation
-        tools = [tool for tool in self.job.Tools.Group]
+        tools = [tool for tool in self.fc_job.Tools.Group]
         for tool in tools:
-            self.job.Tools.removeObject(tool)
+            self.fc_job.Tools.removeObject(tool)
         if self.post_processor:
-            job.PostProcessor = self.post_processor
-        job.Stock.ExtZpos = 0
-        job.Stock.ExtZneg = 0
+            fc_job.PostProcessor = self.post_processor
+        fc_job.Stock.ExtZpos = 0
+        fc_job.Stock.ExtZneg = 0
 
         for op in self.ops:
             op.execute(self)
@@ -174,9 +173,8 @@ class JobImpl:
                 "No postprocessor set - set Job postprocessor to a valid value"
             )
         self._build(rebuild)
-        job = self.job
-        postlist = buildPostList(job)
-        processor = FCPostProcessor.load(job.PostProcessor)
+        postlist = buildPostList(self.fc_job)
+        processor = FCPostProcessor.load(self.fc_job.PostProcessor)
 
         for idx, section in enumerate(postlist):
             name, sublist = section
@@ -190,7 +188,7 @@ class JobImpl:
 
     def show(self, rebuild=False):
         self._build(rebuild)
-        return visualize_fc_job(self.job, self.backward)
+        return visualize_fc_job(self.fc_job, self.backward)
 
     def copy(self, ops):
         job_impl = copy(self)
@@ -246,7 +244,9 @@ class Op(ABC):
     def execute(self, job_impl: JobImpl):
         base_features = self.create_base_features(job_impl)
 
-        op_tool_controller = self.tool.tool_controller(job_impl.fc_job, job_impl.units)
+        op_tool_controller = self.tool.tool_controller(
+            job_impl.fc_job.Proxy, job_impl.units
+        )
         fc_op = self.create_operation(job_impl, base_features)
         apply_params(fc_op, self.__params, job_impl.units)
         fc_op.ToolController = op_tool_controller
