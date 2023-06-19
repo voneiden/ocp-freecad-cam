@@ -135,6 +135,12 @@ class Job:
         holes: bool = False,
         perimeter: bool = True,
         dressups: list["Dressup"] = None,
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
     ):
         """
         2.5D profile operation will operate on faces, wires and edges.
@@ -180,6 +186,11 @@ class Job:
             tool=tool,
             dressups=dressups or [],
             compound_data=shape_source_to_compound(shapes),
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
         )
         return self._add_op(op)
 
@@ -193,7 +204,12 @@ class Job:
         clear_edges: bool,
         exclude_raised: bool,
         pattern: Literal["zigzag", "offset", "zigzag_offset", "line", "grid"],
-        **kwargs,
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
     ) -> "Job":
         """
         2.5D face operation to clear material from a surface
@@ -219,7 +235,11 @@ class Job:
             compound_data=shape_source_to_compound(
                 shapes,
             ),
-            **kwargs,
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
         )
         return self._add_op(op)
 
@@ -242,6 +262,12 @@ class Job:
         use_outline: bool = False,
         zigzag_angle: float = 45.0,
         dressups: list[Dressup] = None,
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
     ) -> "Job":
         """
         2.5D pocket operation.
@@ -282,6 +308,11 @@ class Job:
             tool=tool,
             dressups=dressups or [],
             compound_data=shape_source_to_compound(shapes),
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
         )
         return self._add_op(op)
 
@@ -295,7 +326,12 @@ class Job:
         keep_tool_down: Optional[bool] = False,
         retract_height: Optional[bool] = None,
         chip_break_enabled: Optional[bool] = False,
-        **kwargs,
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
     ):
         """
         Drilling OP works at least on circular edges and cylindrical
@@ -309,7 +345,6 @@ class Job:
         :param keep_tool_down:
         :param retract_height:
         :param chip_break_enabled:
-        :param kwargs:
         :return:
         """
 
@@ -322,7 +357,11 @@ class Job:
             retract_height=retract_height,
             chip_break_enabled=chip_break_enabled,
             compound_data=shape_source_to_compound(shapes),
-            **kwargs,
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
         )
         return self._add_op(op)
 
@@ -336,7 +375,12 @@ class Job:
         start_radius: Optional[float] = 0,
         start_side: Optional[Literal["out", "in"]] = "out",
         step_over: Optional[float] = 50,
-        **kwargs,
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
     ):
         """
         Perform a helix plunge.
@@ -349,7 +393,6 @@ class Job:
         :param start_radius: inner radius?
         :param start_side: define where the op starts when doing multiple passes
         :param step_over: percentage of tool diameter to step over
-        :param kwargs:
         :return:
         """
 
@@ -364,7 +407,11 @@ class Job:
             compound_data=shape_source_to_compound(
                 shapes,
             ),
-            **kwargs,
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
         )
         return self._add_op(op)
 
@@ -377,6 +424,12 @@ class Job:
         extra_depth: float | str = "0.5 mm",
         direction: Literal["cw", "ccw"] = "cw",
         entry_point: int = 0,
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
     ):
         op = DeburrOp(
             width=width,
@@ -386,14 +439,36 @@ class Job:
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(shapes),
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
         )
         return self._add_op(op)
 
-    def engrave(self, shapes: ShapeSource, tool: "Toolbit", *, start_vertex: int = 0):
+    def engrave(
+        self,
+        shapes: ShapeSource,
+        tool: "Toolbit",
+        *,
+        start_vertex: int = 0,
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
+    ):
         op = EngraveOp(
             start_vertex=start_vertex,
             tool=tool,
             compound_data=shape_source_to_compound(shapes),
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
         )
         return self._add_op(op)
 
@@ -404,6 +479,12 @@ class Job:
         *,
         discretize: float = 0.01,
         colinear: float = 10.0,
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
     ):
         """
         V-Carve based on voronoi diagrams.
@@ -424,6 +505,11 @@ class Job:
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(shapes),
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
         )
         return self._add_op(op)
 
@@ -460,6 +546,12 @@ class Job:
         internal_features_cut: bool = True,
         start_point: tuple[float | str, float | str, float | str] = None,
         scan_type: Literal["planar", "rotational"] = "planar",
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
     ):
         op = Surface3DOp(
             bound_box=bound_box,
@@ -490,6 +582,11 @@ class Job:
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(shapes, allow_none=True),
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
         )
         return self._add_op(op)
 
@@ -506,6 +603,12 @@ class Job:
         sample_interval: float | str = "1.00 mm",
         angular_deflection: float | str = "0.25 mm",
         linear_deflection: float | str = "0.01 mm",
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
     ):
         op = WaterlineOp(
             algorithm=algorithm,
@@ -519,6 +622,11 @@ class Job:
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(shapes, allow_none=True),
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
         )
         return self._add_op(op)
 
@@ -541,6 +649,12 @@ class Job:
         tolerance: float = 0.1,
         use_helix_arcs: bool = False,
         use_outline: bool = False,
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
     ):
         op = AdaptiveOp(
             finishing_profile=finishing_profile,
@@ -562,6 +676,11 @@ class Job:
             compound_data=shape_source_to_compound(
                 shapes,
             ),
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
         )
         return self._add_op(op)
 
