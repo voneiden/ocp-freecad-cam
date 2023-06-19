@@ -26,6 +26,7 @@ from ocp_freecad_cam.fc_impl import (
     DeburrOp,
     Dressup,
     DrillOp,
+    EngraveOp,
     FaceOp,
     HelixOp,
     JobImpl,
@@ -383,6 +384,14 @@ class Job:
             direction=direction,
             entry_point=entry_point,
             # Op
+            tool=tool,
+            compound_data=shape_source_to_compound(shapes),
+        )
+        return self._add_op(op)
+
+    def engrave(self, shapes: ShapeSource, tool: "Toolbit", *, start_vertex: int = 0):
+        op = EngraveOp(
+            start_vertex=start_vertex,
             tool=tool,
             compound_data=shape_source_to_compound(shapes),
         )

@@ -26,6 +26,7 @@ from Path.Op import (
     Adaptive,
     Deburr,
     Drilling,
+    Engrave,
     Helix,
     MillFace,
     PocketShape,
@@ -559,8 +560,13 @@ class HelixOp(Op):
         )
 
 
-# class Engrave(Op):
-#    fc_module = FCEngrave
+class EngraveOp(Op):
+    fc_module = Engrave
+    param_mapping = {"start_vertex": "StartVertex"}
+
+    def __init__(self, *args, start_vertex: int, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.params = map_params(self.param_mapping, start_vertex=start_vertex)
 
 
 class DeburrOp(Op):
