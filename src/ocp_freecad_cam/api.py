@@ -681,6 +681,10 @@ class VBit(Endmill):
         )
 
 
+class Chamfer(VBit):
+    _file_name = "chamfer.fcstd"
+
+
 class Drill(Toolbit):
     _file_name = "drill.fcstd"
     _prop_mapping = {
