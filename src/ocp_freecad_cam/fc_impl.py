@@ -9,6 +9,7 @@ Developer notes:
 """
 import tempfile
 from abc import ABC
+from copy import copy
 from types import ModuleType
 from typing import TYPE_CHECKING, Literal, Optional
 
@@ -159,7 +160,7 @@ class JobImpl:
         job.Stock.ExtZneg = 0
 
         for op in self.ops:
-            op.execute(self.doc)
+            op.execute(self)
 
         self.doc.recompute()
 
@@ -191,6 +192,12 @@ class JobImpl:
         self._build(rebuild)
         return visualize_fc_job(self.job, self.backward)
 
+    def copy(self, ops):
+        job_impl = copy(self)
+        job_impl.doc = None
+        job_impl.ops = ops
+        return job_impl
+
 
 class Op(ABC):
     fc_module: ModuleType
@@ -206,7 +213,6 @@ class Op(ABC):
 
     def __init__(
         self,
-        job: "Job",
         *,
         tool,
         compound_data: CompoundData,
@@ -219,14 +225,9 @@ class Op(ABC):
         step_down=None,
         dressups: Optional[list["Dressup"]] = None,
     ):
-        self.job = job
-        self.n = len(self.job.ops) + 1
         self.name = name
         self.tool = tool
         self.compound_data = compound_data
-        self.compound_brep = compound_data.to_transformed_brep(
-            self.job.job_impl.forward, self.job.job_impl.scale_factor
-        )
 
         self.dressups = dressups or []
         self.__params = map_params(
@@ -238,28 +239,31 @@ class Op(ABC):
             step_down=step_down,
         )
 
-    def execute(self, doc):
-        base_features = self.create_base_features(doc)
-        # TODO refactor this spaghetti
-        op_tool_controller = self.tool.tool_controller(
-            self.job.job_impl.fc_job, self.job.job_impl.units
-        )
-        fc_op = self.create_operation(base_features)
-        apply_params(fc_op, self.__params, self.job.job_impl.units)
+    def n(self, job_impl: JobImpl):
+        same_ops = [op for op in job_impl.ops if isinstance(op, self.__class__)]
+        return same_ops.index(self) + 1
+
+    def execute(self, job_impl: JobImpl):
+        base_features = self.create_base_features(job_impl)
+
+        op_tool_controller = self.tool.tool_controller(job_impl.fc_job, job_impl.units)
+        fc_op = self.create_operation(job_impl, base_features)
+        apply_params(fc_op, self.__params, job_impl.units)
         fc_op.ToolController = op_tool_controller
         fc_op.Proxy.execute(fc_op)
         self.create_dressups(fc_op)
 
-    def create_base_features(self, doc):
+    def create_base_features(self, job_impl: JobImpl):
+        doc = job_impl.doc
         compound_brep = self.compound_data.to_transformed_brep(
-            self.job.job_impl.forward, self.job.job_impl.scale_factor
+            job_impl.forward, job_impl.scale_factor
         )
         if compound_brep is None:
             return []
 
         fc_compound = Part.Compound()
         fc_compound.importBrepFromString(compound_brep)
-        feature = doc.addObject("Part::Feature", f"op_brep_{self.n}")
+        feature = doc.addObject("Part::Feature", f"op_brep_{self.n(job_impl)}")
         feature.Shape = fc_compound
 
         base_features = []
@@ -275,14 +279,14 @@ class Op(ABC):
         base_features.append((feature, tuple(sub_selectors)))
         return base_features
 
-    def create_operation(self, base_features):
-        name = self.label
+    def create_operation(self, job_impl: JobImpl, base_features):
+        name = self.label(job_impl)
         PathSetupSheet.RegisterOperation(
             name, self.fc_module.Create, self.fc_module.SetupProperties
         )
         fc_op = self.fc_module.Create(name)
         fc_op.Base = base_features
-        apply_params(fc_op, self.params, self.job.job_impl.units)  # TODO
+        apply_params(fc_op, self.params, job_impl.units)
         return fc_op
 
     def create_dressups(self, fc_op):
@@ -294,24 +298,13 @@ class Op(ABC):
             fc_dressup.Proxy.execute(fc_dressup)
             base = fc_dressup
 
-    @property
-    def label(self):
+    def label(self, job_impl: JobImpl):
         if self.name:
             return self.name
-        return f"{self.__class__.__name__}_{self.n}"
+        return f"{self.__class__.__name__}_{self.n(job_impl)}"
 
 
-class AreaOp(Op, ABC):
-    def __init__(
-        self,
-        job: "Job",
-        *args,
-        **kwargs,
-    ):
-        super().__init__(job, *args, **kwargs)
-
-
-class ProfileOp(AreaOp):
+class ProfileOp(Op):
     fc_module = Profile
     param_mapping = {
         "side": (
@@ -369,7 +362,7 @@ class ProfileOp(AreaOp):
         )
 
 
-class FaceOp(AreaOp):
+class FaceOp(Op):
     fc_module = MillFace
     param_mapping = {
         "finish_depth": AutoUnitKey("FinishDepth"),
@@ -417,7 +410,7 @@ class FaceOp(AreaOp):
         )
 
 
-class PocketOp(AreaOp):
+class PocketOp(Op):
     fc_module = PocketShape
     param_mapping = {
         "finish_depth": AutoUnitKey("FinishDepth"),

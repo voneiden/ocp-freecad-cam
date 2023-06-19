@@ -1,1 +1,1 @@
-import FreeCAD # noqa
+import FreeCAD  # noqa

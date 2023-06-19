@@ -2,6 +2,7 @@
 This is the user facing API of ocp_freecad_cam
 """
 import logging
+from copy import copy
 from typing import Literal, Optional
 
 import Path.Log as Log
@@ -104,33 +105,33 @@ class Job:
             safe_height_expression=safe_height_expression,
             safe_height_offset=safe_height_offset,
         )
-        # Internal attributes
-        self.ops: list[Op] = []
+
         self._needs_rebuild = True
 
-    def show(self):
-        self.job_impl.ops = self.ops  # TODO HACK
-        ais = self.job_impl.show(self._needs_rebuild)
+    def show(self, force_rebuild=False):
+        ais = self.job_impl.show(rebuild=self._needs_rebuild or force_rebuild)
         self._needs_rebuild = False
         return ais
 
-    def to_gcode(self):
-        self.job_impl.ops = self.ops  # TODO HACK
-        gcode = self.job_impl.to_gcode(self._needs_rebuild)
+    def to_gcode(self, force_rebuild=False):
+        gcode = self.job_impl.to_gcode(rebuild=self._needs_rebuild or force_rebuild)
         self._needs_rebuild = False
         return gcode
 
-    def save_fcstd(self, filename="debug.fcstd"):
-        self.job_impl.ops = self.ops  # TODO HACK
-        rv = self.job_impl.save_fcstd(filename)
+    def save_fcstd(self, filename="debug.fcstd", force_rebuild=False):
+        rv = self.job_impl.save_fcstd(
+            filename, rebuild=self._needs_rebuild or force_rebuild
+        )
         self._needs_rebuild = False
         return rv
 
     def _add_op(self, op: Op):
-        # TODO make this immutable
-        # TODO should also clone job_impl with None doc
-        self._needs_rebuild = True
-        self.ops.append(op)
+        new_ops = self.job_impl.ops[:]
+        new_ops.append(op)
+        new_job = copy(self)
+        new_job.job_impl = new_job.job_impl.copy(new_ops)
+        new_job._needs_rebuild = True
+        return new_job
 
     def profile(
         self,
@@ -179,7 +180,6 @@ class Job:
             side = "out"
 
         op = ProfileOp(
-            self,
             # Profile settings
             side=side,
             direction=direction,
@@ -194,8 +194,7 @@ class Job:
             dressups=dressups or [],
             compound_data=shape_source_to_compound(shapes),
         )
-        self._add_op(op)
-        return self
+        return self._add_op(op)
 
     def face(
         self,
@@ -224,7 +223,6 @@ class Job:
         """
 
         op = FaceOp(
-            self,
             finish_depth=finish_depth,
             boundary=boundary,
             clear_edges=clear_edges,
@@ -236,8 +234,7 @@ class Job:
             ),
             **kwargs,
         )
-        self._add_op(op)
-        return self
+        return self._add_op(op)
 
     def pocket(
         self,
@@ -283,7 +280,6 @@ class Job:
         """
 
         op = PocketOp(
-            self,
             finish_depth=finish_depth,
             pattern=pattern,
             cut_mode=cut_mode,
@@ -300,8 +296,7 @@ class Job:
             dressups=dressups or [],
             compound_data=shape_source_to_compound(shapes),
         )
-        self._add_op(op)
-        return self
+        return self._add_op(op)
 
     def drill(
         self,
@@ -332,7 +327,6 @@ class Job:
         """
 
         op = DrillOp(
-            self,
             tool=tool,
             dwell_time=dwell_time,
             extra_offset=extra_offset,
@@ -343,8 +337,7 @@ class Job:
             compound_data=shape_source_to_compound(shapes),
             **kwargs,
         )
-        self._add_op(op)
-        return self
+        return self._add_op(op)
 
     def helix(
         self,
@@ -374,7 +367,6 @@ class Job:
         """
 
         op = HelixOp(
-            self,
             direction=direction,
             offset_extra=offset_extra,
             start_radius=start_radius,
@@ -387,8 +379,7 @@ class Job:
             ),
             **kwargs,
         )
-        self._add_op(op)
-        return self
+        return self._add_op(op)
 
     def deburr(
         self,
@@ -401,7 +392,6 @@ class Job:
         entry_point: int = 0,
     ):
         op = DeburrOp(
-            self,
             width=width,
             extra_depth=extra_depth,
             direction=direction,
@@ -410,8 +400,7 @@ class Job:
             tool=tool,
             compound_data=shape_source_to_compound(shapes),
         )
-        self._add_op(op)
-        return self
+        return self._add_op(op)
 
     def v_carve(
         self,
@@ -435,15 +424,13 @@ class Job:
         """
 
         op = VCarveOp(
-            self,
             discretize=discretize,
             colinear=colinear,
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(shapes),
         )
-        self._add_op(op)
-        return self
+        return self._add_op(op)
 
     def surface(
         self,
@@ -480,7 +467,6 @@ class Job:
         scan_type: Literal["planar", "rotational"] = "planar",
     ):
         op = Surface3DOp(
-            self,
             bound_box=bound_box,
             cut_mode=cut_mode,
             cut_pattern=cut_pattern,
@@ -510,8 +496,7 @@ class Job:
             tool=tool,
             compound_data=shape_source_to_compound(shapes, allow_none=True),
         )
-        self._add_op(op)
-        return self
+        return self._add_op(op)
 
     def adaptive(
         self,
@@ -534,7 +519,6 @@ class Job:
         use_outline: bool = False,
     ):
         op = AdaptiveOp(
-            self,
             finishing_profile=finishing_profile,
             force_inside_cut=force_inside_cut,
             helix_angle=helix_angle,
@@ -555,8 +539,7 @@ class Job:
                 shapes,
             ),
         )
-        self._add_op(op)
-        return self
+        return self._add_op(op)
 
 
 class Toolbit:
