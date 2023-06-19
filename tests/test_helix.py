@@ -19,6 +19,6 @@ def test_drill():
 
     tool = Endmill(diameter="0.5 mm")
     job = Job(top, wp, "grbl")
-    job = job.drill(hole_edges, tool)
+    job = job.helix(hole_edges, tool)
     job.to_gcode()
     job.show()
