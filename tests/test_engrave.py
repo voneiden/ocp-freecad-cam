@@ -1,13 +1,14 @@
 import cadquery as cq
 
-from ocp_freecad_cam.api import Endmill, Job
+from ocp_freecad_cam import Endmill
+from ocp_freecad_cam.api import Job
 
 
 def test_cq_engrave():
     box = cq.Workplane().box(10, 10, 1)
     top = box.faces(">Z").workplane()
     engrave_shape = box.edges(">Z")
-    tool = Endmill("1mm", diameter=1)
+    tool = Endmill(name="1mm", diameter=1)
     job = Job(top, box, "grbl", units="metric")
     job = job.engrave(engrave_shape, tool)
     gcode = job.to_gcode()

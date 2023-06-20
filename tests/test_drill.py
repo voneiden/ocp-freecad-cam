@@ -1,6 +1,7 @@
 import cadquery as cq
 
-from ocp_freecad_cam.api import Drill, Job
+from ocp_freecad_cam import Drill
+from ocp_freecad_cam.api import Job
 
 
 def test_drill():

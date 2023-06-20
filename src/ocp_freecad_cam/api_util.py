@@ -6,7 +6,7 @@ import FreeCAD
 import Path.Base.Util as PathUtil
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCP.BRepTools import BRepTools
-from OCP.gp import gp_Ax3, gp_GTrsf, gp_Pln, gp_Pnt, gp_Trsf
+from OCP.gp import gp_Pln, gp_Pnt, gp_Trsf
 from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_ShapeEnum
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopoDS import (
@@ -276,26 +276,37 @@ def shape_source_to_compound(
 
 
 class AutoUnitKey:
-    def __init__(self, key):
+    def __init__(self, key, mode: Literal["distance", "feed"] = "distance"):
         self.key = key
+        self.mode = mode
 
 
 class AutoUnitValue:
-    def __init__(self, value):
+    def __init__(self, value, mode: Literal["distance", "feed"] = "distance"):
         self.value = value
+        self.mode = mode
 
     def convert(self, unit: Literal["metric", "imperial"]):
         return self._convert(self.value, unit)
+
+    def value_unit(self, unit: Literal["metric", "imperial"]):
+        match (unit, self.mode):
+            case "metric", "distance":
+                return "mm"
+            case "metric", "feed":
+                return "mm/min"
+            case "imperial", "distance":
+                return "in"
+            case "imperial", "feed":
+                return "in/min"
+
+        raise ValueError(f"Undefined unit/mode combination: {unit} / {self.mode}")
 
     def _convert(self, value, unit: Literal["metric", "imperial"]):
         pq = FreeCAD.Units.parseQuantity
 
         if isinstance(value, (int, float)):
-            if unit == "metric":
-                return value
-            if unit == "imperial":
-                return float(pq(f"{value} in"))
-            raise ValueError(f"Unknown unit: {unit}")
+            return float(pq(f"{value} {self.value_unit(unit)}"))
 
         elif isinstance(value, tuple):
             return tuple(self._convert(v, unit) for v in value)
@@ -315,7 +326,7 @@ def map_prop(mapping: ParamMapping, k, v):
     result = mapping[k]
     match result:
         case AutoUnitKey():
-            return result.key, AutoUnitValue(v)
+            return result.key, AutoUnitValue(v, mode=result.mode)
         case (nk, dv):
             return nk, dv[v]
         case nk:

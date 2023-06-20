@@ -1,6 +1,6 @@
 import cadquery as cq
 
-from ocp_freecad_cam.api import Endmill, Job
+from ocp_freecad_cam import Endmill, Job
 
 wp = cq.Workplane().box(5, 5, 2)
 

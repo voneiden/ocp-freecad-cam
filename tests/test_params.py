@@ -6,7 +6,7 @@ import Part
 import pytest
 from Path.Main import Job as FCJob
 
-from ocp_freecad_cam.api import Endmill, VBit
+from ocp_freecad_cam import Endmill, VBit
 from ocp_freecad_cam.api_util import AutoUnitKey
 from ocp_freecad_cam.fc_impl import (
     DeburrOp,

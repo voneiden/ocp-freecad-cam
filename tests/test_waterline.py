@@ -1,12 +1,13 @@
 import cadquery as cq
 
-from ocp_freecad_cam.api import Endmill, Job
+from ocp_freecad_cam import Endmill
+from ocp_freecad_cam.api import Job
 
 
 def test_cq_waterline():
     box = cq.Workplane().cylinder(10, 10)
     top = box.faces(">Z").workplane()
-    tool = Endmill("1mm", diameter=1)
+    tool = Endmill(diameter=1)
     job = Job(top, box, "grbl", units="metric")
     job = job.waterline(None, tool, sample_interval="0.5 mm", bound_box="stock")
     gcode = job.to_gcode()
