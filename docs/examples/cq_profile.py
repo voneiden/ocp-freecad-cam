@@ -8,5 +8,4 @@ top = wp.faces(">Z").workplane()
 profile_shape = wp.faces("<Z")
 
 tool = Endmill(diameter="1 mm")
-job = Job(top, wp)
-job = job.profile(profile_shape, tool)
+job = Job(top, wp).profile(profile_shape, tool)

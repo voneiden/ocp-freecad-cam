@@ -58,3 +58,16 @@ Helix
 
 .. image:: images/cq_helix.png
 
+
+Adaptive
+-------------------------
+
+:meth:`ocp_freecad_cam.api.Job.adaptive` creates clearing/profiling tool paths using adaptive algorithms.
+
+.. tabs::
+   .. tab:: CadQuery
+        .. literalinclude :: cq_adaptive.py
+           :language: python
+   .. tab:: Build123d (todo)
+
+.. image:: images/cq_adaptive.png

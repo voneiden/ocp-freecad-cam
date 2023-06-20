@@ -78,3 +78,4 @@ if __name__ == "__main__":
     render_file("cq_pocket.py", ["wp", "job"], "images/cq_pocket.png")
     render_file("cq_drill.py", ["wp", "job"], "images/cq_drill.png")
     render_file("cq_helix.py", ["wp", "job"], "images/cq_helix.png")
+    render_file("cq_adaptive.py", ["wp", "job"], "images/cq_adaptive.png")
