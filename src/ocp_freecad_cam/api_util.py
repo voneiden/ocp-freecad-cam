@@ -342,7 +342,7 @@ def apply_params(fc_obj, params, unit: Literal["metric", "imperial"]):
         if isinstance(v, AutoUnitValue):
             v = v.convert(unit)
         if isinstance(v, Expression):
-            fc_obj.setExpression(k, v)
+            fc_obj.setExpression(k, v.expression)
         else:
             PathUtil.setProperty(fc_obj, k, v)
 
