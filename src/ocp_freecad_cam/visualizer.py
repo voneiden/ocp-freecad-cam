@@ -241,7 +241,6 @@ def visualize_fc_job(job, inverse_trsf: gp_Trsf):
     visual_commands = []
 
     postlist = buildPostList(job)
-    print("All ops", [o.Name for o in job.Proxy.allOperations()])
     for name, sub_op_list in postlist:
         for op in sub_op_list:
             if hasattr(op, "Path"):
@@ -261,7 +260,6 @@ def visualize_fc_job(job, inverse_trsf: gp_Trsf):
                             # if it needs to be handled..
                             new_params[attr] = new_params[attr] + params[attr]
                 combined_params = {**params, **new_params}
-                print("Match", command.Name)
                 match command.Name:
                     case "G0":
                         params = add_command(
@@ -338,7 +336,6 @@ def visualize_fc_job(job, inverse_trsf: gp_Trsf):
 def visual_commands_to_ais(
     visual_commands: list[VisualCommand], inverse_trsf: Optional[gp_Trsf] = None
 ):
-    print("to ais", visual_commands)
     if len(visual_commands) < 2:
         return
 
