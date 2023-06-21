@@ -2,6 +2,7 @@
 This is the user facing API of ocp_freecad_cam
 """
 import logging
+import os
 from copy import copy
 from typing import Literal, Optional
 
@@ -46,9 +47,12 @@ except ImportError:
     b3d = None
 
 logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
-Log._useConsole = False
-Log._defaultLogLevel = Log.Level.DEBUG
+logging.getLogger().setLevel(logging.INFO)
+
+if os.environ.get("DEBUG", False):
+    logging.getLogger().setLevel(logging.DEBUG)
+    Log._useConsole = False
+    Log._defaultLogLevel = Log.Level.DEBUG
 
 
 class Job:

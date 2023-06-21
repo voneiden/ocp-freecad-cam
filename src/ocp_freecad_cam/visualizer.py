@@ -394,8 +394,13 @@ def generate_visual_commands(job):
                     case "G99":
                         canned_r = True
 
+                    case "G54":
+                        pass
+
                     case _:
                         if command.Name.startswith("("):
+                            continue
+                        if command.Name.startswith("M"):
                             continue
                         print("Unknown gcode", command.Name)
     return visual_commands
