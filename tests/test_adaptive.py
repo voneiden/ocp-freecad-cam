@@ -2,6 +2,10 @@ import cadquery as cq
 
 from ocp_freecad_cam import Endmill
 from ocp_freecad_cam.api import Job
+from ocp_freecad_cam.visualizer import (
+    generate_visual_commands,
+    visual_commands_to_edges,
+)
 
 
 def test_cq_adaptive():
@@ -20,3 +24,6 @@ def test_cq_adaptive():
     # Don't care what it generates as long as it's at least 100 lines
     assert (finish_index - start_index) > 100
     assert "F150" in gcode
+
+    visual_cmds = generate_visual_commands(job.job_impl.fc_job)
+    visual_commands_to_edges(visual_cmds, job.job_impl.backward)
