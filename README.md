@@ -4,6 +4,9 @@ oc-freecad-cam exposes FreeCAD's Path workbench in a fluent python API that take
 OCP TopoDS_Shape objects and their wrappers from CadQuery and Build123d to enable generating
 parametric tool paths from the comfort of your keyboard.
 
+![image](https://github.com/voneiden/ocp-freecad-cam/assets/437576/48264cf9-6155-4f24-8094-0bb9aab00777)
+
+
 ⚠ NOTE ⚠
 --------
 
