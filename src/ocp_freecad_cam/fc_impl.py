@@ -844,8 +844,6 @@ class StockBase(ABC):
 
 
 class Stock(StockBase):
-    """Simple extent based stock"""
-
     _param_mapping = {
         "xn": AutoUnitKey("ExtXneg"),
         "xp": AutoUnitKey("ExtXpos"),
@@ -864,6 +862,16 @@ class Stock(StockBase):
         zn: float | str = None,
         zp: float | str = None,
     ):
+        """
+        Simple extent based stock
+
+        :param xn: offset to X negative
+        :param xp: offset to X positive
+        :param yn: offset to Y negative
+        :param yp: offset to Y positive
+        :param zn: offset to Z negative
+        :param zp: offset to Z positive
+        """
         self.params = map_params(
             self._param_mapping,
             xn=xn,
