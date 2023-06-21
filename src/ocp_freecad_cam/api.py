@@ -127,18 +127,19 @@ class Job:
 
         self._needs_rebuild = True
 
-    def show(self, force_rebuild=False):
+    def show(self, show_object=None, force_rebuild=False):
         """
         Generates an AIS_InteractiveObject that can be used to display
         the result in cq-editor or cq-viewer
 
-        TODO: Support OCP CAD Viewer
-
+        :param show_object:
         :param force_rebuild: set to True if you've tweaked some parameters
             outside the normal fluent flow
         :return: AIS_InteractiveObject that can be given to show_object
         """
-        ais = self.job_impl.show(rebuild=self._needs_rebuild or force_rebuild)
+        ais = self.job_impl.show(
+            show_object=show_object, rebuild=self._needs_rebuild or force_rebuild
+        )
         self._needs_rebuild = False
         return ais
 

@@ -1,8 +1,8 @@
 import math
-import typing
 from abc import ABC
+from collections import defaultdict
 from itertools import pairwise
-from typing import Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from cadquery.units import DEG2RAD
 from OCP.AIS import AIS_Circle, AIS_Line, AIS_MultipleConnectedInteractive, AIS_Shape
@@ -19,11 +19,25 @@ from OCP.Geom import (
 from OCP.Geom2d import Geom2d_Line
 from OCP.gp import gp_Ax2, gp_Ax3, gp_Dir, gp_Dir2d, gp_Pnt, gp_Pnt2d, gp_Trsf, gp_Vec
 from OCP.Quantity import Quantity_Color, Quantity_NOC_GREEN, Quantity_NOC_YELLOW
-from OCP.TopoDS import TopoDS_Edge
+from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Edge
 from Path.Post.Command import buildPostList
 
-if typing.TYPE_CHECKING:
+from ocp_freecad_cam.api_util import transform_shape
+
+if TYPE_CHECKING:
     pass
+import logging
+
+logger = logging.getLogger(__name__)
+
+ais_color_map = {
+    "yellow": Quantity_Color(Quantity_NOC_YELLOW),
+    "green": Quantity_Color(Quantity_NOC_GREEN),
+}
+rgb_color_map = {
+    "yellow": (150, 150, 0),
+    "green": (0, 200, 0),
+}
 
 
 class VisualCommand(ABC):
@@ -33,6 +47,9 @@ class VisualCommand(ABC):
         self.z = z
 
     def to_ais(self, start: "VisualCommand"):
+        raise NotImplementedError
+
+    def to_edge(self, start: "VisualCommand") -> Optional[tuple[TopoDS_Edge, str]]:
         raise NotImplementedError
 
     def __eq__(self, other):
@@ -47,8 +64,16 @@ class LinearVisualCommand(VisualCommand):
             return None
         start_point = Geom_CartesianPoint(start.x, start.y, start.z)
         end_point = Geom_CartesianPoint(self.x, self.y, self.z)
-        # todo empty lines
+
         return AIS_Line(start_point, end_point)
+
+    def to_edge(self, start: "VisualCommand") -> Optional[tuple[TopoDS_Edge, str]]:
+        if start == self:
+            return None
+
+        start_point = gp_Pnt(start.x, start.y, start.z)
+        end_point = gp_Pnt(self.x, self.y, self.z)
+        return BRepBuilderAPI_MakeEdge(start_point, end_point).Edge(), "yellow"
 
 
 class RapidVisualCommand(LinearVisualCommand):
@@ -72,6 +97,26 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
         raise NotImplementedError
 
     def to_ais(self, start: VisualCommand):
+        shape, color = self._to_shape(start)
+        if isinstance(shape, Geom_Circle):
+            ais_shape = AIS_Circle(shape)
+        else:
+            ais_shape = AIS_Shape(shape)
+
+        if color:
+            ais_shape.SetColor(ais_color_map[color])
+        return ais_shape
+
+    def to_edge(self, start: "VisualCommand") -> Optional[tuple[TopoDS_Edge, str]]:
+        shape, color = self._to_shape(start)
+        if isinstance(shape, TopoDS_Edge):
+            edge = shape
+        else:
+            edge = BRepBuilderAPI_MakeEdge(shape).Edge()
+
+        return edge, "yellow"  # todo hardcoded color is a wee silly
+
+    def _to_shape(self, start: VisualCommand) -> tuple[TopoDS_Edge | Geom_Circle, str]:
         if self.arc_plane == (0, 0, 1):
             if self.i is None or self.j is None:
                 raise ValueError("I and J must be defined for XY arc")
@@ -135,9 +180,7 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
                 gp_Dir(*self.arc_plane),
                 lefthand=not self.clockwise,
             )
-            shape = AIS_Shape(e)
-            shape.SetColor(Quantity_Color(Quantity_NOC_GREEN))
-            return shape
+            return e, "green"
 
         # XY
         arc_plane = gp_Vec(*self.arc_plane)
@@ -153,14 +196,13 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
         end_point = gp_Pnt(self.x, self.y, self.z)
 
         if start_point.IsEqual(end_point, 1e-4):
-            return AIS_Circle(geom_circle)
+            return geom_circle, "yellow"
         else:
             curve = GC_MakeArcOfCircle(
                 geom_circle.Circ(), start_point, end_point, True
             ).Value()
-            shape = AIS_Shape(BRepBuilderAPI_MakeEdge(curve).Edge())
-            shape.SetColor(Quantity_Color(Quantity_NOC_YELLOW))
-            return shape
+            edge = BRepBuilderAPI_MakeEdge(curve).Edge()
+            return edge, "yellow"
 
 
 def makeHelix(
@@ -193,7 +235,7 @@ def makeHelix(
             radius,
         )
 
-    # 2. construct an segment in the u,v domain
+    # 2. construct a segment in the u,v domain
     if lefthand:
         geom_line = Geom2d_Line(gp_Pnt2d(0.0, 0.0), gp_Dir2d(-2 * math.pi, pitch))
     else:
@@ -227,12 +269,39 @@ class CCWArcVisualCommand(ArcVisualCommand):
         return False
 
 
-def visualize_fc_job(job, inverse_trsf: gp_Trsf):
+def visualize_fc_job(
+    job, inverse_trsf: gp_Trsf, show_object: Optional[Callable] = None
+):
+    visual_commands = generate_visual_commands(job)
+    if show_object is None:
+        logger.warning("No show object - unable to automatically visualize job")
+        return visual_commands_to_ais(visual_commands, inverse_trsf=inverse_trsf)
+
+    match source_module := show_object.__module__.split(".")[0]:
+        case "cq_editor" | "cq_viewer":
+            ais = visual_commands_to_ais(visual_commands, inverse_trsf=inverse_trsf)
+            show_object(ais, "G-Code")  # todo better naming
+            return ais
+
+        case "ocp_vscode":
+            color_compounds = visual_commands_to_edges(
+                visual_commands, inverse_trsf=inverse_trsf
+            )
+            for color, compound in color_compounds:
+                show_object(compound, options={"color": rgb_color_map[color]})
+        case _:
+            logger.warning(
+                f"Unsupported show_object source module ({source_module}) - visualizing as edges"
+            )
+            as_edges = True
+
+
+def generate_visual_commands(job):
     """
     Visualize a FreeCAD job
     https://wiki.freecad.org/Path_scripting#The_FreeCAD_Internal_GCode_Format
     """
-    params = {"arc_plane": (0, 0, 1)}
+    params = {"x": 0, "y": 0, "arc_plane": (0, 0, 1)}
     relative = False
     canned = False
     canned_r = False
@@ -329,8 +398,7 @@ def visualize_fc_job(job, inverse_trsf: gp_Trsf):
                         if command.Name.startswith("("):
                             continue
                         print("Unknown gcode", command.Name)
-
-    return visual_commands_to_ais(visual_commands, inverse_trsf=inverse_trsf)
+    return visual_commands
 
 
 def visual_commands_to_ais(
@@ -351,6 +419,37 @@ def visual_commands_to_ais(
     # UnsetSelectionMode?
     # Color?
     return group
+
+
+def visual_commands_to_edges(
+    visual_commands: list[VisualCommand], inverse_trsf: Optional[gp_Trsf] = None
+) -> list[tuple[str, TopoDS_Compound]]:
+    if len(visual_commands) < 2:
+        return []
+
+    def to_transformed_compound(edges, inverse_trsf: Optional[gp_Trsf]):
+        compound = TopoDS_Compound()
+        builder = TopoDS_Builder()
+        builder.MakeCompound(compound)
+
+        for edge in edges:
+            builder.Add(compound, edge)
+        if inverse_trsf:
+            return transform_shape(compound, inverse_trsf)
+        return compound
+
+    color_edge_map = defaultdict(list)
+    for start, end in pairwise(visual_commands):
+        edge_color_pair = end.to_edge(start)
+        if edge_color_pair:
+            edge, color_key = end.to_edge(start)
+            color_edge_map[color_key].append(edge)
+
+    color_compound_map = {
+        color: to_transformed_compound(edges, inverse_trsf)
+        for color, edges in color_edge_map.items()
+    }
+    return list(color_compound_map.items())
 
 
 def add_command(

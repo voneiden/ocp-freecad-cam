@@ -190,9 +190,9 @@ class JobImpl:
                 gcode = processor.export(sublist, tmp_file.name, " ".join(options))
                 return gcode
 
-    def show(self, rebuild=False):
+    def show(self, show_object=None, rebuild=False):
         self._build(rebuild)
-        return visualize_fc_job(self.fc_job, self.backward)
+        return visualize_fc_job(self.fc_job, self.backward, show_object=show_object)
 
     def copy(self, ops):
         job_impl = copy(self)
