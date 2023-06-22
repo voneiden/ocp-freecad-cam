@@ -26,9 +26,9 @@ class Toolbit:
     _tool_controller: Optional[FCToolController] = field(init=False)
     params: dict[str, str] = field(init=False)
     param_mapping: ClassVar[ParamMapping] = {
-        "chip_load": "ChipLoad",
-        "flutes": "Flutes",
-        "material": "Material",
+        # "chip_load": "ChipLoad",
+        # "flutes": "Flutes",
+        # "material": "Material",
     }
 
     tc_param_mapping: ClassVar[ParamMapping] = {
