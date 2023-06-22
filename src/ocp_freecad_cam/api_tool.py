@@ -18,6 +18,10 @@ class FCToolController:
 
 @dataclass(kw_only=True)
 class Toolbit:
+    """
+    Base class for Toolbits
+    """
+
     _bit: Optional[FCBit] = field(init=False)
     _tool_controller: Optional[FCToolController] = field(init=False)
     params: dict[str, str] = field(init=False)
@@ -40,18 +44,42 @@ class Toolbit:
     _file_name: ClassVar[str]
 
     name: str = ""
-    number: int = 1
-    path: Optional[str] = None
+    """ Completely optional tool name """
 
-    chip_load: str = None
-    flutes: int = None
-    material: str = None
+    number: int = 1
+    """ Tool number for tool change purposes """
+
+    path: Optional[str] = None
+    """ 
+    Tool shape path. Not needed if the shape is located in the expected
+    library folder 
+    """
+
+    # Removed these three attributes as they have currently
+    # no function in FreeCAD besides bookkeeping.
+    # chip_load: str = None
+    # flutes: int = None
+    # material: str = None
 
     # TC attributes
     h_feed: float | str = None
+    """
+    Horizontal feed rate. Units are either mm/min or in/min. Floats
+    are interpreted with the job units. Strings should include the unit.
+    """
     v_feed: float | str = None
+    """
+    Vertical feed rate. Units are either mm/min or in/min. Floats
+    are interpreted with the job units. Strings should include the unit.
+    """
     speed: float | str = None
+    """
+    Spindle speed in RPM.
+    """
     spindle_dir: Literal["forward", "reverse", "none"] = None
+    """
+    Spindle direction, forward (clockwise) or reverse (counterclockwise).
+    """
 
     def __post_init__(self):
         self._bit = None
@@ -90,6 +118,10 @@ class Toolbit:
 
 @dataclass(kw_only=True)
 class Endmill(Toolbit):
+    """
+    Endmill is the standard cylindrical tool bit.
+    """
+
     _file_name: ClassVar[str] = "endmill.fcstd"
     param_mapping = {
         **Toolbit.param_mapping,
@@ -100,18 +132,44 @@ class Endmill(Toolbit):
     }
 
     cutting_edge_height: float | str = None
+    """ 
+    Length of the cutter aka maximum cut depth. Floats are interpreted 
+    either in mm or in depending on job unit.
+    """
     diameter: float | str = None
+    """ 
+    Diameter of the cutter. Floats are interpreted 
+    either in mm or in depending on job unit.
+    """
     length: float | str = None
+    """ 
+    Total length of the tool from spindle holder. Floats are interpreted 
+    either in mm or in depending on job unit.
+    """
     shank_diameter: float | str = None
+    """ 
+    Diameter of the shank abover the cutter. Floats are interpreted 
+    either in mm or in depending on job unit.
+    """
 
 
 @dataclass(kw_only=True)
 class Ballnose(Endmill):
+    """
+    Ballnose is an Endmill with a round tip.
+    """
+
     _file_name: ClassVar[str] = "ballnose.fcstd"
 
 
 @dataclass(kw_only=True)
 class VBit(Endmill):
+    """
+    V-Bit's are engraving tools that come in various shapes. Depth of cut
+    defines the cut width. Typically used with the V-Carve operation (for
+    variable width cuts) or Engrave operation (for constant width).
+    """
+
     _file_name: ClassVar[str] = "v-bit.fcstd"
 
     param_mapping = {
@@ -121,16 +179,33 @@ class VBit(Endmill):
     }
 
     tip_angle: float = None
+    """ Tip angle in degrees, typically 15, 30, 60 or 90. """
     tip_diameter: float | str = None
+    """ 
+    Diameter of the tip. Friendly reminder that low grade V-bits have
+    huge disparity, ie something advertised as 0.1 mm can be actually 0.3 m.
+    Measure your bits if doing high detail work!
+    
+    Floats are interpreted either in mm or in depending on Job unit.
+    """
 
 
 @dataclass(kw_only=True)
 class Chamfer(VBit):
+    """
+    Chamfer has same attributes as a VBit. In practice, they have usually
+    comparatively wide tip diameters.
+    """
+
     _file_name: ClassVar[str] = "chamfer.fcstd"
 
 
 @dataclass(kw_only=True)
 class Drill(Toolbit):
+    """
+    A Drill tool for.. drilling holes!
+    """
+
     _file_name: ClassVar[str] = "drill.fcstd"
     param_mapping = {
         **Toolbit.param_mapping,
@@ -140,12 +215,28 @@ class Drill(Toolbit):
     }
 
     diameter: float | str = None
+    """ 
+    Diameter of the drill. Floats are interpreted either in mm or in 
+    depending on job unit. 
+    """
     length: float | str = None
+    """
+    Length of the drill from tip to collet. Floats are interpreted either 
+    in mm or in depending on job unit. 
+    """
     tip_angle: float = None
+    """
+    Tip angle in degrees. Determines the extra distance of penetration needed
+    to get the correct hole size.
+    """
 
 
 @dataclass(kw_only=True)
 class Probe(Toolbit):
+    """
+    Please refer to FreeCAD on how to use this tool.
+    """
+
     _file_name: ClassVar[str] = "probe.fcstd"
     param_mapping = {
         **Toolbit.param_mapping,
@@ -155,12 +246,28 @@ class Probe(Toolbit):
     }
 
     diameter: float | str = None
+    """ 
+    Diameter of the probe. Floats are interpreted either in mm or in 
+    depending on job unit. 
+    """
     length: float | str = None
+    """
+    Length of the drill from tip to collet. Floats are interpreted either 
+    in mm or in depending on job unit. 
+    """
     shank_diameter: float | str = None
+    """ 
+    Diameter of the probe shank. Probably irrelevant in FreeCAD. 
+    Floats are interpreted either in mm or in depending on job unit. 
+    """
 
 
 @dataclass(kw_only=True)
 class SlittingSaw(Toolbit):
+    """
+    Please refer to FreeCAD on how to use this.
+    """
+
     _file_name: ClassVar[str] = "slittingsaw.fcstd"
     param_mapping = {
         **Toolbit.param_mapping,
@@ -182,16 +289,29 @@ class SlittingSaw(Toolbit):
 
 @dataclass(kw_only=True)
 class Bullnose(Endmill):
+    """
+    A mix of Endmill and Ballnose, the Bullnose has a flat area
+    at the tip with rounded cutting edges.
+    """
+
     _file_name: ClassVar[str] = "bullnose.fcstd"
     param_mapping = {
         **Endmill.param_mapping,
         "flat_radius": AutoUnitKey("FlatRadius"),
     }
     flat_radius: float | str = None
+    """
+    The radius of the flat part and the tip of the tool.
+    Floats are interpreted either in mm or in depending on job unit. 
+    """
 
 
 @dataclass(kw_only=True)
 class ThreadMill(Toolbit):
+    """
+    Please refer to FreeCAD on how to use this tool.
+    """
+
     _file_name: ClassVar[str] = "bullnose.fcstd"
     param_mapping = {
         **Toolbit.param_mapping,
