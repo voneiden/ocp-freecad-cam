@@ -1,3 +1,6 @@
+![image](https://github.com/voneiden/ocp-freecad-cam/assets/437576/9dfde2cb-f648-43a7-b34c-1b329fe575db)
+
+
 # Overview
 
 oc-freecad-cam exposes FreeCAD's Path workbench in a fluent python API that takes
