@@ -947,11 +947,18 @@ class Dogbone(Dressup):
             self.mapping, incision=incision, custom=custom, side=side, style=style
         )
 
-    def create(self, base):
+    def create(self, job_impl: "JobImpl", base):
         # DogboneII has this required code that exists only on the GUI side
-        fc_obj = super().create(base)
-        job = PathUtils.findParentJob(base)
-        job.Proxy.addOperation(fc_obj, base)
+        fc_obj = super().create(job_impl, base)
+        job_impl.fc_job.Proxy.addOperation(fc_obj, base)
+
+        # Also..
+        # FreeCAD BUG: Need to do some manual black magic
+        # Code copied from FreeCAD GUI side
+        for i in fc_obj.Base.InList:
+            if hasattr(i, "Group") and fc_obj.Base.Name in [o.Name for o in i.Group]:
+                i.Group = [o for o in i.Group if o.Name != fc_obj.Base.Name]
+
         return fc_obj
 
 
@@ -1001,6 +1008,17 @@ class Tab(Dressup):
             fillet_radius=fillet_radius,
             segmentation_factor=segmentation_factor,
         )
+
+    def create(self, job_impl: "JobImpl", base):
+        obj = super().create(job_impl, base)
+
+        # FreeCAD BUG: Need to do some manual black magic
+        # Code copied from FreeCAD GUI side
+        for i in obj.Base.InList:
+            if hasattr(i, "Group") and obj.Base.Name in [o.Name for o in i.Group]:
+                i.Group = [o for o in i.Group if o.Name != obj.Base.Name]
+
+        return obj
 
 
 Stock = StockImpl

@@ -258,7 +258,7 @@ class Op(ABC):
         apply_params(fc_op, self.__params, job_impl.units)
         fc_op.ToolController = op_tool_controller
         fc_op.Proxy.execute(fc_op)
-        self.create_dressups(fc_op)
+        self.create_dressups(job_impl, fc_op)
 
     def create_base_features(self, job_impl: JobImpl):
         doc = job_impl.doc
@@ -296,10 +296,10 @@ class Op(ABC):
         apply_params(fc_op, self.params, job_impl.units)
         return fc_op
 
-    def create_dressups(self, fc_op):
+    def create_dressups(self, job_impl, fc_op):
         base = fc_op
         for dressup in self.dressups:
-            fc_dressup = dressup.create(base)
+            fc_dressup = dressup.create(job_impl, base)
             for k, v in dressup.params:
                 PathUtil.setProperty(fc_dressup, k, v)
             fc_dressup.Proxy.execute(fc_dressup)
@@ -831,7 +831,7 @@ class Dressup:
     factory = None
     params = None
 
-    def create(self, base):
+    def create(self, job_impl, base):
         return self.factory.Create(base)
 
 
