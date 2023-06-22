@@ -28,6 +28,7 @@ class Toolbit:
     }
 
     tc_param_mapping: ClassVar[ParamMapping] = {
+        "speed": "SpindleSpeed",
         "spindle_dir": (
             "SpindleDirection",
             {"forward": "Forward", "reverse": "Reverse", "none": "None"},
@@ -49,6 +50,7 @@ class Toolbit:
     # TC attributes
     h_feed: float | str = None
     v_feed: float | str = None
+    speed: float | str = None
     spindle_dir: Literal["forward", "reverse", "none"] = None
 
     def __post_init__(self):
