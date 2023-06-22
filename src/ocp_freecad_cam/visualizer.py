@@ -282,6 +282,9 @@ def visualize_fc_job(
     match source_module := show_object.__module__.split(".")[0]:  # noqa
         case "cq_editor" | "cq_viewer":
             ais = visual_commands_to_ais(visual_commands, inverse_trsf=inverse_trsf)
+            if ais is None:
+                logger.warning("Empty job, nothing to show")
+                return None
             show_object(ais, "G-Code")  # todo better naming
             return ais
 
@@ -289,8 +292,14 @@ def visualize_fc_job(
             color_compounds = visual_commands_to_edges(
                 visual_commands, inverse_trsf=inverse_trsf
             )
+            if color_compounds is None:
+                logger.warning("Empty job, nothing to show")
+                return None
+
             for color, compound in color_compounds:
-                show_object(compound, options={"color": rgb_color_map[color]})
+                show_object(
+                    compound, options={"color": rgb_color_map[color]}
+                )  # TODO better renaming
             return color_compounds
         case _:
             logger.warning(
@@ -299,6 +308,9 @@ def visualize_fc_job(
             color_compounds = visual_commands_to_edges(
                 visual_commands, inverse_trsf=inverse_trsf
             )
+            if color_compounds is None:
+                logger.warning("Empty job, nothing to show")
+                return None
             for color, compound in color_compounds:
                 show_object(compound)
             return color_compounds
