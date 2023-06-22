@@ -1,4 +1,4 @@
-![image](https://github.com/voneiden/ocp-freecad-cam/assets/437576/9dfde2cb-f648-43a7-b34c-1b329fe575db)
+![image](https://github.com/voneiden/ocp-freecad-cam/assets/437576/79a0247a-c28c-43b0-b324-b71881ba3d96)
 
 
 # Overview
