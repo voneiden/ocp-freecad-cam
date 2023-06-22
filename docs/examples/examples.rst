@@ -13,7 +13,9 @@ Profiling
         .. literalinclude :: cq_profile.py
            :language: python
 
-   .. tab:: Build123d (todo)
+   .. tab:: Build123d
+        .. literalinclude :: b3d_profile.py
+           :language: python
 
 .. image:: images/cq_profile.png
 
