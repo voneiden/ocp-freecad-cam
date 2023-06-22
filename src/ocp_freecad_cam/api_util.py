@@ -70,7 +70,7 @@ def extract_topods_shapes(
     if isinstance(shape_source, list):
         shapes = []
         for source in shape_source:
-            shapes += extract_topods_shapes(source)
+            shapes += extract_topods_shapes(source, compound=compound)
         return shapes
 
     if cq:
