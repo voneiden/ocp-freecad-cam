@@ -9,11 +9,11 @@ User facing API
 Tools
 -----
 
-.. autoclass:: ocp_freecad_cam.api.Endmill
+.. autoclass:: ocp_freecad_cam.api_tool.Endmill
 
-.. autoclass:: ocp_freecad_cam.api.Ballnose
+.. autoclass:: ocp_freecad_cam.api_tool.Ballnose
 
-.. autoclass:: ocp_freecad_cam.api.VBit
+.. autoclass:: ocp_freecad_cam.api_tool.VBit
 
 Dressups
 --------

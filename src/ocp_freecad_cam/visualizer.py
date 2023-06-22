@@ -2,7 +2,7 @@ import math
 from abc import ABC
 from collections import defaultdict
 from itertools import pairwise
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 from cadquery.units import DEG2RAD
 from OCP.AIS import AIS_Circle, AIS_Line, AIS_MultipleConnectedInteractive, AIS_Shape
@@ -116,7 +116,9 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
 
         return edge, "yellow"  # todo hardcoded color is a wee silly
 
-    def _to_shape(self, start: VisualCommand) -> tuple[TopoDS_Edge | Geom_Circle, str]:
+    def _to_shape(
+        self, start: VisualCommand
+    ) -> tuple[Union[TopoDS_Edge, Geom_Circle], str]:
         if self.arc_plane == (0, 0, 1):
             if self.i is None or self.j is None:
                 raise ValueError("I and J must be defined for XY arc")
@@ -277,7 +279,7 @@ def visualize_fc_job(
         logger.warning("No show object - unable to automatically visualize job")
         return visual_commands_to_ais(visual_commands, inverse_trsf=inverse_trsf)
 
-    match source_module := show_object.__module__.split(".")[0]:
+    match source_module := show_object.__module__.split(".")[0]:  # noqa
         case "cq_editor" | "cq_viewer":
             ais = visual_commands_to_ais(visual_commands, inverse_trsf=inverse_trsf)
             show_object(ais, "G-Code")  # todo better naming
