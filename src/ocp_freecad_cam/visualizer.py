@@ -291,11 +291,17 @@ def visualize_fc_job(
             )
             for color, compound in color_compounds:
                 show_object(compound, options={"color": rgb_color_map[color]})
+            return color_compounds
         case _:
             logger.warning(
-                f"Unsupported show_object source module ({source_module}) - visualizing as edges"
+                f"Unsupported show_object source module ({source_module}) - visualizing as edges without color"
             )
-            as_edges = True
+            color_compounds = visual_commands_to_edges(
+                visual_commands, inverse_trsf=inverse_trsf
+            )
+            for color, compound in color_compounds:
+                show_object(compound)
+            return color_compounds
 
 
 def generate_visual_commands(job):
