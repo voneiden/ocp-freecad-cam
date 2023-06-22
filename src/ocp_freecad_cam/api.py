@@ -63,7 +63,7 @@ class Job:
         post_processor: PostProcessor = None,
         units: Literal["metric", "imperial"] = "metric",
         geometry_tolerance=None,
-        coolant_mode: Literal["None", "Flood", "Mist"] = "None",
+        coolant: Literal["None", "Flood", "Mist"] = "None",
         final_depth_expression="OpFinalDepth",
         start_depth_expression="OpStartDepth",
         step_down_expression="OpToolDiameter",
@@ -89,7 +89,7 @@ class Job:
             metric (mm) or imperial (in).
         :param geometry_tolerance: smaller increases accuracy, but slows
             down computation.
-        :param coolant_mode: default coolant mode for the job
+        :param coolant: default coolant mode for the job
         :param final_depth_expression: custom expression for calculating  the
             default final (bottom) depth
         :param start_depth_expression:custom expression for calculating the
@@ -118,7 +118,7 @@ class Job:
             post_processor=post_processor,
             units=units,
             geometry_tolerance=geometry_tolerance,
-            coolant_mode=coolant_mode,
+            coolant=coolant,
             final_depth_expression=final_depth_expression,
             start_depth_expression=start_depth_expression,
             step_down_expression=step_down_expression,
@@ -206,6 +206,7 @@ class Job:
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
     ):
         """
         2.5D profile operation will operate on faces, wires and edges.
@@ -256,6 +257,7 @@ class Job:
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
         return self._add_op(op)
 
@@ -275,6 +277,7 @@ class Job:
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
     ) -> "Job":
         """
         2.5D face operation to clear material from a surface.
@@ -306,6 +309,7 @@ class Job:
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
         return self._add_op(op)
 
@@ -334,6 +338,7 @@ class Job:
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
     ) -> "Job":
         """
         2.5D pocket operation.
@@ -379,6 +384,7 @@ class Job:
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
         return self._add_op(op)
 
@@ -398,6 +404,7 @@ class Job:
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
     ):
         """
         Drilling OP works at least on circular edges and cylindrical
@@ -430,6 +437,7 @@ class Job:
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
         return self._add_op(op)
 
@@ -449,6 +457,7 @@ class Job:
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
     ):
         """
         Perform a helix plunge.
@@ -482,6 +491,7 @@ class Job:
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
         return self._add_op(op)
 
@@ -500,6 +510,7 @@ class Job:
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
     ):
         """
         Deburring operation, typically using a chamfer tool.
@@ -532,6 +543,7 @@ class Job:
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
         return self._add_op(op)
 
@@ -547,6 +559,7 @@ class Job:
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
     ):
         """
         Engraving OP follows edges.
@@ -572,6 +585,7 @@ class Job:
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
         return self._add_op(op)
 
@@ -588,6 +602,7 @@ class Job:
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
     ):
         """
         V-Carve based on voronoi diagrams.
@@ -615,6 +630,7 @@ class Job:
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
         return self._add_op(op)
 
@@ -657,6 +673,7 @@ class Job:
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
     ):
         """
         3D surface op that mills the part using a XY scan pattern
@@ -734,6 +751,7 @@ class Job:
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
         return self._add_op(op)
 
@@ -756,6 +774,7 @@ class Job:
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
     ):
         """
         Similar to the Surface OP, but performs the operation using a push
@@ -799,6 +818,7 @@ class Job:
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
         return self._add_op(op)
 
@@ -827,6 +847,7 @@ class Job:
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
     ):
         """
         Adaptive op generates a tool path to maintain constant cutter
@@ -882,6 +903,7 @@ class Job:
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
         return self._add_op(op)
 

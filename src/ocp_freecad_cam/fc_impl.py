@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 class JobImpl:
     _job_param_mapping = {"geometry_tolerance": "GeometryTolerance"}
     _setup_sheet_param_mapping = {
-        "coolant_mode": "CoolantMode",
+        "coolant": "CoolantMode",
         "final_depth_expression": "FinalDepthExpression",
         "start_depth_expression": "StartDepthExpression",
         "step_down_expression": "StepDownExpression",
@@ -77,7 +77,7 @@ class JobImpl:
         post_processor: Optional[PostProcessor],
         units: Literal["metric", "imperial"],
         geometry_tolerance,
-        coolant_mode,
+        coolant,
         final_depth_expression,
         start_depth_expression,
         step_down_expression,
@@ -106,7 +106,7 @@ class JobImpl:
 
         self.setup_sheet_params = map_params(
             self._setup_sheet_param_mapping,
-            coolant_mode=coolant_mode,
+            coolant=coolant,
             final_depth_expression=final_depth_expression,
             start_depth_expression=start_depth_expression,
             step_down_expression=step_down_expression,
@@ -211,6 +211,7 @@ class Op(ABC):
         "safe_height": "SafeHeight",
         "start_depth": "StartDepth",
         "step_down": "StepDown",
+        "coolant": "CoolantMode",
     }
 
     def __init__(
@@ -225,6 +226,7 @@ class Op(ABC):
         safe_height=None,
         start_depth=None,
         step_down=None,
+        coolant=None,
         dressups: Optional[list["Dressup"]] = None,
     ):
         self.name = name
@@ -239,6 +241,7 @@ class Op(ABC):
             safe_height=safe_height,
             start_depth=start_depth,
             step_down=step_down,
+            coolant=coolant,
         )
 
     def n(self, job_impl: JobImpl):
