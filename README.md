@@ -67,6 +67,7 @@ The three paths (also contents of the .pth file) for the above AppImage example 
 
 ```bash
 /home/user/freecad/squashfs-root/usr/lib
+/home/user/freecad/squashfs-root/usr/Mod/Draft
 /home/user/freecad/squashfs-root/usr/Mod/Path
 /home/user/freecad/squashfs-root/usr/lib/python3.10/site-packages/
 ```
