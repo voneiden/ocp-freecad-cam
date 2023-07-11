@@ -14,7 +14,7 @@ from ocp_freecad_cam.api_tool import Toolbit
 from ocp_freecad_cam.api_util import (
     AutoUnitKey,
     CompoundSource,
-    ShapeSource,
+    ShapeSourceOrIterable,
     extract_plane,
     extract_topods_shapes,
     map_params,
@@ -187,7 +187,7 @@ class Job:
 
     def profile(
         self,
-        shapes: ShapeSource,
+        shapes: ShapeSourceOrIterable,
         tool: "Toolbit",
         *,
         side: Literal["out", "in", "mid"] = "out",
@@ -263,14 +263,14 @@ class Job:
 
     def face(
         self,
-        shapes: ShapeSource,
+        shapes: ShapeSourceOrIterable,
         tool: "Toolbit",
         *,
-        finish_depth: float,
-        boundary: Literal["boundbox", "face", "perimeter", "stock"],
-        clear_edges: bool,
-        exclude_raised: bool,
-        pattern: Literal["zigzag", "offset", "zigzag_offset", "line", "grid"],
+        finish_depth: float = None,
+        boundary: Literal["boundbox", "face", "perimeter", "stock"] = None,
+        clear_edges: bool = None,
+        exclude_raised: bool = None,
+        pattern: Literal["zigzag", "offset", "zigzag_offset", "line", "grid"] = None,
         # OP depth
         clearance_height=None,
         final_depth=None,
@@ -315,7 +315,7 @@ class Job:
 
     def pocket(
         self,
-        shapes: ShapeSource,
+        shapes: ShapeSourceOrIterable,
         tool: "Toolbit",
         *,
         finish_depth: float = 0,
@@ -390,7 +390,7 @@ class Job:
 
     def drill(
         self,
-        shapes: ShapeSource,
+        shapes: ShapeSourceOrIterable,
         tool: "Toolbit",
         dwell_time: Optional[float] = None,
         extra_offset: Optional[Literal["none", "1x", "2x"]] = "none",
@@ -443,7 +443,7 @@ class Job:
 
     def helix(
         self,
-        shapes: ShapeSource,
+        shapes: ShapeSourceOrIterable,
         tool: "Toolbit",
         *,
         direction: Optional[Literal["cw", "ccw"]] = "cw",
@@ -497,7 +497,7 @@ class Job:
 
     def deburr(
         self,
-        shapes: ShapeSource,
+        shapes: ShapeSourceOrIterable,
         tool: "Toolbit",
         *,
         width: float | str = "1 mm",
@@ -549,7 +549,7 @@ class Job:
 
     def engrave(
         self,
-        shapes: ShapeSource,
+        shapes: ShapeSourceOrIterable,
         tool: "Toolbit",
         *,
         start_vertex: int = 0,
@@ -591,7 +591,7 @@ class Job:
 
     def vcarve(
         self,
-        shapes: ShapeSource,
+        shapes: ShapeSourceOrIterable,
         tool: "Toolbit",
         *,
         discretize: float = 0.01,
@@ -636,7 +636,7 @@ class Job:
 
     def surface(
         self,
-        shapes: Optional[ShapeSource],
+        shapes: Optional[ShapeSourceOrIterable],
         tool: "Toolbit",
         *,
         bound_box: Literal["base_bound_box", "stock"] = "base_bound_box",
@@ -757,7 +757,7 @@ class Job:
 
     def waterline(
         self,
-        shapes: Optional[ShapeSource],
+        shapes: Optional[ShapeSourceOrIterable],
         tool: "Toolbit",
         *,
         algorithm: Literal["ocl", "experimental"] = "ocl",
@@ -824,7 +824,7 @@ class Job:
 
     def adaptive(
         self,
-        shapes: Optional[ShapeSource],
+        shapes: Optional[ShapeSourceOrIterable],
         tool: "Toolbit",
         *,
         finishing_profile: bool = True,
