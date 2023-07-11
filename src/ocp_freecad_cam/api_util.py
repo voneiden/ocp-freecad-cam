@@ -7,6 +7,7 @@ import Path.Base.Util as PathUtil
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCP.BRepTools import BRepTools
 from OCP.gp import gp_Pln, gp_Pnt, gp_Trsf
+from OCP.ShapeFix import ShapeFix_Shape
 from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_ShapeEnum
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopoDS import (
@@ -90,7 +91,9 @@ def extract_topods_shapes(
             return [shape_source.wrapped]
     if b3d:
         valid_b3d_shapes = (
-            [b3d.Compound, b3d.Solid, b3d.Part] if compound else [b3d.Face, b3d.Wire, b3d.Vertex]
+            [b3d.Compound, b3d.Solid, b3d.Part]
+            if compound
+            else [b3d.Face, b3d.Wire, b3d.Vertex]
         )
         if isinstance(shape_source, b3d.ShapeList):
             return [
@@ -174,8 +177,13 @@ def scale_shape(shape: TopoDS_Shape, scale_factor: float) -> TopoDS_Shape:
 
 
 def shape_to_brep(shape: TopoDS_Shape):
+    # Fix the shape first so that FreeCAD doesn't choke on it
+    shape_fix = ShapeFix_Shape(shape)
+    shape_fix.Perform()
+    fixed_shape = shape_fix.Shape()
+
     data = io.BytesIO()
-    BRepTools.Write_s(shape, data)
+    BRepTools.Write_s(fixed_shape, data)
     data.seek(0)
     return data.read().decode("utf8")
 

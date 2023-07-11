@@ -6,6 +6,8 @@ import pytest
 from OCP.ShapeAnalysis import ShapeAnalysis
 from OCP.ShapeFix import ShapeFix_Shape
 
+from ocp_freecad_cam import Endmill, Job
+
 
 @pytest.fixture
 def buggy_face():
@@ -26,3 +28,12 @@ def test_occt_shape_analysis_outer_wire_bug(buggy_face):
     fixed_compound = cq.Compound(sf.Shape())
     correct_wire = cq.Wire(ShapeAnalysis.OuterWire_s(fixed_compound.Faces()[0].wrapped))
     assert buggy_face.outerWire().Length() == correct_wire.Length()
+
+
+def test_buggy_profile(buggy_face):
+    tool = Endmill(diameter=1)
+    job = Job(buggy_face, cq.Compound.makeCompound([buggy_face]), "grbl").profile(
+        buggy_face, tool, holes=True
+    )
+
+    assert "G1 X-8.250 Y-7.134" in job.to_gcode()
