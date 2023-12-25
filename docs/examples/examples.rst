@@ -29,9 +29,25 @@ Profiling
    .. tab:: CadQuery
         .. literalinclude :: cq_pocket.py
            :language: python
-   .. tab:: Build123d (todo)
+   .. tab:: Build123d (Open pocket)
+        .. literalinclude :: b3d_pocket.py
+            :language: python
 
 .. image:: images/cq_pocket.png
+
+Open pockets
+~~~~~~~~~~~~
+
+Open pockets are tricky even in the GUI of FreeCAD. A clever trick that can be employed in our case:
+
+1) Select the desired operation faces
+2) Offset them larger (for example 1/3 tool diameter)
+3) Cut the offset faces with the part/compound/solid
+4) Fuse the result with the original faces
+
+The result is a face that has been offset only the open directions.
+
+.. image:: images/b3d_pocket.png
 
 Drill
 -------------------------

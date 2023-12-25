@@ -2,3 +2,5 @@ __pycache__
 src/ocp_freecad_cam.egg-info
 dist
 *.fcstd1
+
+docs/_build

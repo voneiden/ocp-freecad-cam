@@ -57,11 +57,13 @@ def render_file(file_path, display_object_names, output_path):
         if isinstance(obj, Job):
             display_shapes.append(obj.show())
         else:
-            shapes = extract_topods_shapes(obj)
+            try:
+                shapes = extract_topods_shapes(obj)
+            except ValueError:
+                shapes = []
             if not shapes:
                 shapes = extract_topods_shapes(obj, compound=True)
-            if not shapes:
-                raise ValueError("No shapes found)")
+
             ais_shapes = []
             for shape in shapes:
                 ais_shape = AIS_Shape(shape)
@@ -79,3 +81,4 @@ if __name__ == "__main__":
     render_file("cq_drill.py", ["wp", "job"], "images/cq_drill.png")
     render_file("cq_helix.py", ["wp", "job"], "images/cq_helix.png")
     render_file("cq_adaptive.py", ["wp", "job"], "images/cq_adaptive.png")
+    render_file("b3d_pocket.py", ["box", "job"], "images/b3d_open_pocket.png")
