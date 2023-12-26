@@ -17,8 +17,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: [ "3.10" ]
+        release: ["weekly-builds", "0.21.2"]
+        python: [ "3.10", "3.11" ]
+        exclude:
+          - release: "weekly-builds"
+            python: "3.11"
 
+        include:
+          - python: "3.10"
+            pypattern: "py310"
+          - python: "3.11"
+            pypattern: "py311"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -33,10 +42,13 @@ jobs:
           cache: pip
 
       - name: Setup FreeCAD
+        env:
+          RELEASE: ${{ matrix.release }}
+          PYPATTERN: ${{ matrix.pypattern }}
         run: |
           mkdir $PWD/freecad
           cd $PWD/freecad
-          wget -O freecad.AppImage https://github.com$(curl -v --silent https://github.com/voneiden/FreeCAD-Bundle/releases/expanded_assets/weekly-builds 2>&1 | sed -n 's/.*href="\([^"]*\).*/\1/p' | grep x86_64 | grep AppImage$)
+          wget -O freecad.AppImage https://github.com$(curl -v --silent https://github.com/voneiden/FreeCAD-Bundle/releases/expanded_assets/${RELEASE} 2>&1 | sed -n 's/.*href="\([^"]*\).*/\1/p' | grep x86_64 | grep $PYPATTERN | grep AppImage$)
           chmod +x freecad.AppImage
           ./freecad.AppImage --appimage-extract > /dev/null 
           export PYTHONPATH=.:$PWD/../src:$PWD/squashfs-root/usr/lib:$PWD/squashfs-root/usr/Mod/Path:$PWD/squashfs-root/usr/lib/python3.10/site-packages/
