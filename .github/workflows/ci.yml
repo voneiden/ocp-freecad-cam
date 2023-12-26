@@ -1,6 +1,7 @@
 name: ocp-freecad-cam-ci
-
 on:
+  schedule:
+   - cron: "30 23 * * 1,5"
   push:
     branches: [ dev ]
   pull_request:
