@@ -16,6 +16,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         release: ["weekly-builds", "0.21.2"]
         python: [ "3.10", "3.11" ]
