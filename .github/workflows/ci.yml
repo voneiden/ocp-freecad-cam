@@ -45,13 +45,14 @@ jobs:
         env:
           RELEASE: ${{ matrix.release }}
           PYPATTERN: ${{ matrix.pypattern }}
+          PYVER: ${{ matrix.python }}
         run: |
           mkdir $PWD/freecad
           cd $PWD/freecad
           wget -O freecad.AppImage https://github.com$(curl -v --silent https://github.com/voneiden/FreeCAD-Bundle/releases/expanded_assets/${RELEASE} 2>&1 | sed -n 's/.*href="\([^"]*\).*/\1/p' | grep x86_64 | grep $PYPATTERN | grep AppImage$)
           chmod +x freecad.AppImage
           ./freecad.AppImage --appimage-extract > /dev/null 
-          export PYTHONPATH=.:$PWD/../src:$PWD/squashfs-root/usr/lib:$PWD/squashfs-root/usr/Mod/Path:$PWD/squashfs-root/usr/lib/python3.10/site-packages/
+          export PYTHONPATH=.:$PWD/../src:$PWD/squashfs-root/usr/lib:$PWD/squashfs-root/usr/Mod/Path:$PWD/squashfs-root/usr/lib/python${PYVER}/site-packages/
           echo "PYTHONPATH=$PYTHONPATH" >> $GITHUB_ENV
 
       - name: Test FreeCAD is available
