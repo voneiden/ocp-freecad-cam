@@ -7,6 +7,7 @@ Developer notes:
 
 
 """
+import os
 import tempfile
 from abc import ABC
 from copy import copy
@@ -182,12 +183,13 @@ class JobImpl:
 
         for idx, section in enumerate(postlist):
             name, sublist = section
-            with tempfile.NamedTemporaryFile() as tmp_file:
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_file = os.path.join(tmp_dir, "output.nc")
                 options = ["--no-show-editor"]
                 if self.units == "imperial":
                     options.append("--inches")
 
-                gcode = processor.export(sublist, tmp_file.name, " ".join(options))
+                gcode = processor.export(sublist, tmp_file, " ".join(options))
                 return gcode
 
     def show(self, show_object=None, rebuild=False):
