@@ -14,10 +14,11 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: ["ubuntu-latest", "windows-latest"]
         release: ["weekly-builds", "0.21.2"]
         python: [ "3.10", "3.11" ]
         exclude:
@@ -25,6 +26,11 @@ jobs:
             python: "3.11"
 
         include:
+          - python: "3.11"
+            release: "0.21.2"
+            os: "ubuntu-latest"
+            primary: true
+
           - python: "3.10"
             pypattern: "py310"
           - python: "3.11"
@@ -42,7 +48,8 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
 
-      - name: Setup FreeCAD
+      - name: Setup FreeCAD (Linux)
+        if: matrix.os == 'ubuntu-latest'
         env:
           RELEASE: ${{ matrix.release }}
           PYPATTERN: ${{ matrix.pypattern }}
@@ -53,23 +60,62 @@ jobs:
           wget -O freecad.AppImage https://github.com$(curl -v --silent https://github.com/voneiden/FreeCAD-Bundle/releases/expanded_assets/${RELEASE} 2>&1 | sed -n 's/.*href="\([^"]*\).*/\1/p' | grep x86_64 | grep $PYPATTERN | grep AppImage$)
           chmod +x freecad.AppImage
           ./freecad.AppImage --appimage-extract > /dev/null 
-          export PYTHONPATH=.:$PWD/../src:$PWD/squashfs-root/usr/lib:$PWD/squashfs-root/usr/Mod/Path:$PWD/squashfs-root/usr/lib/python${PYVER}/site-packages/
-          echo "PYTHONPATH=$PYTHONPATH" >> $GITHUB_ENV
+          
+          $PWD/squashfs-root/usr/bin/python -m venv --system-site-packages venv
+          echo "$PWD/squashfs-root/usr/lib" > venv/lib/python${PYVER}/site-packages/freecad.pth
 
-      - name: Test FreeCAD is available
+      - name: Setup FreeCAD (Windows)
+        if: matrix.os == 'windows-latest'
+        env:
+          RELEASE: ${{ matrix.release }}
+          PYPATTERN: ${{ matrix.pypattern }}
+          PYVER: ${{ matrix.python }}
         run: |
+          mkdir freecad
+          cd freecad
+          (Invoke-WebRequest -Uri "https://github.com/voneiden/FreeCAD-Bundle/releases/expanded_assets/${{ matrix.release }}").Content -match 'href="([^"]*.x86_64-${{ matrix.pypattern }}.7z)"' | Out-Null
+          Invoke-WebRequest -Uri ("https://github.com" + $matches[1]) -OutFile freecad.7z
+          7z x freecad.7z
+          Invoke-Expression (".\" + (Get-ChildItem . "FreeCAD_*" | select -first 1).Name + "\bin\python -m venv --system-site-packages venv")
+
+      - name: Test FreeCAD is available (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          source freecad/venv/bin/activate
           echo $PYTHONPATH
           python -c "import sys; print(sys.path)"
           python -c "import FreeCAD"
 
-      - name: Install dependencies
+      - name: Test FreeCAD is available (Windows)
+        if: matrix.os == 'windows-latest'
         run: |
+          .\freecad\venv\Scripts\activate
+          echo $PYTHONPATH
+          python -c "import sys; print(sys.path)"
+          python -c "import FreeCAD"
+
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          source freecad/venv/bin/activate
           python -m pip install --upgrade pip
-          pip install cadquery
+          pip install cadquery build123d 
           pip install -r requirements-dev.txt
+          pip install .
+
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          .\freecad\venv\Scripts\activate
+          python -m pip install --upgrade pip
+          pip install cadquery build123d 
+          pip install -r requirements-dev.txt
+          pip install . 
 
       - name: Check black
+        if: matrix.primary
         run: |
+          source freecad/venv/bin/activate
           black --check src
           black --check tests
 
@@ -80,25 +126,25 @@ jobs:
       #    run: flake8
 
       - name: Check isort
-        uses: liskin/gh-problem-matcher-wrap@v2
-        with:
-          linters: isort
-          run: |
-            isort src --check-only --diff
-      - name: Check isort
-        uses: liskin/gh-problem-matcher-wrap@v2
-        with:
-          linters: isort
-          run: |
-            isort tests --check-only --diff
+        if: matrix.primary
+        run: |
+          source freecad/venv/bin/activate
+          isort src tests --check-only --diff
 
-      - name: Run tests
-        uses: liskin/gh-problem-matcher-wrap@v2
-        with:
-          linters: pytest
-          run: pytest -ra -vvv --cov=src --cov-report xml tests
+      - name: Run tests (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          source freecad/venv/bin/activate
+          python -m pytest -ra -vvv --cov=src --cov-report xml tests
+
+      - name: Run tests (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          .\freecad\venv\Scripts\activate
+          python -m pytest -ra -vvv tests
 
       - name: Codecov
+        if: matrix.primary
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage.xml
