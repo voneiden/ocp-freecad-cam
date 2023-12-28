@@ -68,6 +68,7 @@ jobs:
           
           $PWD/squashfs-root/usr/bin/python -m venv --system-site-packages venv
           echo "$PWD/squashfs-root/usr/lib" > venv/lib/python${PYVER}/site-packages/freecad.pth
+          echo "$PWD/../src" > venv/lib/python${PYVER}/site-packages/ocp_freecad_cam.pth
 
       - name: Setup FreeCAD (Windows)
         if: matrix.os == 'windows-latest'
@@ -82,6 +83,7 @@ jobs:
           Invoke-WebRequest -Uri ("https://github.com" + $matches[1]) -OutFile freecad.7z
           7z x freecad.7z
           Invoke-Expression (".\" + (Get-ChildItem . "FreeCAD_*" | select -first 1).Name + "\bin\python -m venv --system-site-packages venv")
+          "$($PWD)\..\src" | Out-File -FilePath "venv\Lib\site-packages\ocp_freecad_cam.pth"
 
       - name: Test FreeCAD is available (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -106,7 +108,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install cadquery build123d 
           pip install -r requirements-dev.txt
-          pip install .
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -115,7 +116,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install cadquery build123d 
           pip install -r requirements-dev.txt
-          pip install . 
 
       - name: Check black
         if: matrix.primary
