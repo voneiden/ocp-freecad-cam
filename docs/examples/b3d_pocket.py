@@ -1,4 +1,4 @@
-from build123d import Box, Pos, Axis, offset
+from build123d import Axis, Box, Pos, offset
 
 from ocp_freecad_cam import Endmill, Job
 
