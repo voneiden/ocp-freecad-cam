@@ -47,7 +47,7 @@ Open pockets are tricky even in the GUI of FreeCAD. A clever trick that can be e
 
 The result is a face that has been offset only the open directions.
 
-.. image:: images/b3d_pocket.png
+.. image:: images/b3d_open_pocket.png
 
 Drill
 -------------------------
