@@ -22,12 +22,17 @@ jobs:
         release: ["weekly-builds", "0.21.2"]
         python: [ "3.10", "3.11" ]
         exclude:
+          # does not exist
           - release: "weekly-builds"
             python: "3.11"
 
+          # causes an access violation on python interpreter exit
+          - os: "windows-latest"
+            python: "3.11"
+
         include:
-          - python: "3.11"
-            release: "0.21.2"
+          - python: "3.10"
+            release: "weekly-builds"
             os: "ubuntu-latest"
             primary: true
 
