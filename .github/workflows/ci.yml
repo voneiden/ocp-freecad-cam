@@ -146,7 +146,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           .\freecad\venv\Scripts\activate
-          python -m pytest -ra -vvv tests
+          pytest -ra -vvv tests
 
       - name: Codecov
         if: matrix.primary
