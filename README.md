@@ -96,7 +96,7 @@ or create the pth file manually somehow. Just note that the venv file structure 
 ```
 
 
-## Dev dependecies
+## Dev dependencies
 
 Dev dependencies are listed in requirements-dev.txt, generated from requirements-dev.in with `pip-compile`
 

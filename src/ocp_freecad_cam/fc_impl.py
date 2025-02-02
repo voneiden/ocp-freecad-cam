@@ -513,7 +513,7 @@ class DrillOp(Op):
     ):
         """
         Attributes in FreeCAD but not here:
-        * RetractMode is overriden by KeepToolDown in FC code
+        * RetractMode is overridden by KeepToolDown in FC code
         * AddTipLength is not used anywhere?
         """
 
