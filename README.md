@@ -44,13 +44,14 @@ Number one is now the recommended way and will be documented below
 
 ## Acquiring FreeCAD
 
-Again, three options. Please use at least version 0.21.
+Two options. Please use at FreeCAD version 1.0.0 or greater. If for some
+reason you'd prefer to use an older version of FreeCAD (v0.21), see the
+[v0.9.4](https://github.com/voneiden/ocp-freecad-cam/releases/tag/v0.9.4) release of
+ocp-freecad-cam. 
 
 1) Official distributions https://www.freecad.org/downloads.php
-2) Official portable packages https://github.com/FreeCAD/FreeCAD-Bundle/releases
+2) Official portable packages https://github.com/FreeCAD/FreeCAD/releases
    * includes weekly packages
-3) voneiden's fork of portable packages https://github.com/voneiden/FreeCAD-Bundle/releases
-   * uses an older version of OpenSSL and there are also some python 3.11 packages
 
 ## Linux AppImage installation example using a venv
 
