@@ -19,27 +19,19 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest", "windows-latest"]
-        release: ["weekly-builds", "0.21.2"]
-        python: [ "3.10", "3.11" ]
-        exclude:
-          # does not exist
-          - release: "weekly-builds"
-            python: "3.11"
-
-          # causes an access violation on python interpreter exit
-          - os: "windows-latest"
-            python: "3.11"
-
+        # Support for "macos-13", "macos-latest" needs a contributor!
+        release: ["latest", "1.0.2"]
+        python: [ "3.11" ]
+        # exclude:
         include:
-          - python: "3.10"
-            release: "weekly-builds"
+          - python: "3.11"
+            release: "latest"
             os: "ubuntu-latest"
             primary: true
 
-          - python: "3.10"
-            pypattern: "py310"
           - python: "3.11"
             pypattern: "py311"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -53,6 +45,10 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
 
+      - name: Install requests
+        run: |
+          python -m pip install requests
+
       - name: Setup FreeCAD (Linux)
         if: matrix.os == 'ubuntu-latest'
         env:
@@ -62,7 +58,7 @@ jobs:
         run: |
           mkdir $PWD/freecad
           cd $PWD/freecad
-          wget -O freecad.AppImage https://github.com$(curl -v --silent https://github.com/voneiden/FreeCAD-Bundle/releases/expanded_assets/${RELEASE} 2>&1 | sed -n 's/.*href="\([^"]*\).*/\1/p' | grep x86_64 | grep $PYPATTERN | grep AppImage$)
+          wget -O freecad.AppImage $(python ../.github/workflows/resolve_appimage.py --release ${RELEASE} --pyver ${PYPATTERN} --arch Linux-x86_64 --suffix AppImage)
           chmod +x freecad.AppImage
           ./freecad.AppImage --appimage-extract > /dev/null 
           
@@ -79,8 +75,9 @@ jobs:
         run: |
           mkdir freecad
           cd freecad
-          (Invoke-WebRequest -Uri "https://github.com/voneiden/FreeCAD-Bundle/releases/expanded_assets/${{ matrix.release }}").Content -match 'href="([^"]*.x86_64-${{ matrix.pypattern }}.7z)"' | Out-Null
-          Invoke-WebRequest -Uri ("https://github.com" + $matches[1]) -OutFile freecad.7z
+          $urlPath = python ../.github/workflows/resolve_appimage.py --release $env:RELEASE --pyver $env:PYPATTERN --arch Windows-x86_64 --suffix 7z
+          Invoke-WebRequest -Uri $urlPath -OutFile "freecad.7z"
+
           7z x freecad.7z
           Invoke-Expression (".\" + (Get-ChildItem . "FreeCAD_*" | select -first 1).Name + "\bin\python -m venv --system-site-packages venv")
           "$($PWD)\..\src" | Out-File -FilePath "venv\Lib\site-packages\ocp_freecad_cam.pth"
