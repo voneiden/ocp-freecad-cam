@@ -20,7 +20,7 @@ from OCP.Geom2d import Geom2d_Line
 from OCP.gp import gp_Ax2, gp_Ax3, gp_Dir, gp_Dir2d, gp_Pnt, gp_Pnt2d, gp_Trsf, gp_Vec
 from OCP.Quantity import Quantity_Color, Quantity_NOC_GREEN, Quantity_NOC_YELLOW
 from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Edge
-from Path.Post.Command import buildPostList
+from Path.Post.Processor import PostProcessorFactory
 
 from ocp_freecad_cam.api_util import transform_shape
 
@@ -329,7 +329,9 @@ def generate_visual_commands(job):
 
     visual_commands = []
 
-    postlist = buildPostList(job)
+    processor = PostProcessorFactory.get_post_processor(job, job.PostProcessor)
+    postlist = processor._buildPostList()
+
     for name, sub_op_list in postlist:
         for op in sub_op_list:
             if hasattr(op, "Path"):

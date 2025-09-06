@@ -7,6 +7,7 @@ Developer notes:
 
 
 """
+
 import os
 import tempfile
 from abc import ABC
@@ -36,8 +37,7 @@ from Path.Op import (
 )
 from Path.Op import Vcarve as FCVCarve
 from Path.Op import Waterline
-from Path.Post.Command import buildPostList
-from Path.Post.Processor import PostProcessor as FCPostProcessor
+from Path.Post.Processor import PostProcessorFactory
 
 from ocp_freecad_cam.api_util import (
     AutoUnitKey,
@@ -178,19 +178,15 @@ class JobImpl:
                 "No postprocessor set - set Job postprocessor to a valid value"
             )
         self._build(rebuild)
-        postlist = buildPostList(self.fc_job)
-        processor = FCPostProcessor.load(self.fc_job.PostProcessor)
 
-        for idx, section in enumerate(postlist):
-            name, sublist = section
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                tmp_file = os.path.join(tmp_dir, "output.nc")
-                options = ["--no-show-editor"]
-                if self.units == "imperial":
-                    options.append("--inches")
+        processor = PostProcessorFactory.get_post_processor(
+            self.fc_job, self.fc_job.PostProcessor
+        )
+        if self.units == "imperial":
+            self.fc_job.PostProcessorArgs += " --inches"
+        export = [output[1] for output in processor.export()]
 
-                gcode = processor.export(sublist, tmp_file, " ".join(options))
-                return gcode
+        return "\n\n".join(export)
 
     def show(self, show_object=None, rebuild=False):
         self._build(rebuild)
