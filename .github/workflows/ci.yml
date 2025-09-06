@@ -143,7 +143,12 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           .\freecad\venv\Scripts\activate
-          python -m pytest -ra -vvv tests
+          # We use pytest-xdist on Windows because it gets rid of a silly issue
+          # which causes normal pytest to exit with exit code 1 even though all
+          # tests pass. That's probably segfault / access violation on Windows
+          # when cleaning up, so it's not terribly relevant to our test session.
+          pip install pytest-xdist
+          python -m pytest -n auto -ra -vvv tests
 
       - name: Codecov
         if: matrix.primary
