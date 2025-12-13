@@ -68,7 +68,7 @@ chmod +x FreeCAD_0.21.2-2023-12-26-conda-Linux-x86_64-py311.AppImage
 ./FreeCAD_0.21.2-2023-12-26-conda-Linux-x86_64-py311.AppImage --appimage-extract
 ./squashfs-root/usr/bin/python -m venv --system-site-packages fcvenv
 echo "$PWD/squashfs-root/usr/lib" > fcvenv/lib/python3.11/site-packages/freecad.pth
-source fcenv/bin/activate
+source fcvenv/bin/activate
 pip install cadquery build123d ocp-freecad-cam 
 ```
 
