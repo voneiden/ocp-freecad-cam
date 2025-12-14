@@ -330,7 +330,7 @@ class Expression:
         self.expression = expression
 
 
-ParamMapping: TypeAlias = dict[str, Union[str, AutoUnitKey, dict[str, str]]]
+ParamMapping: TypeAlias = dict[str, Union[str, AutoUnitKey, tuple[str, dict[str, str]]]]
 
 
 def map_prop(mapping: ParamMapping, k, v):
