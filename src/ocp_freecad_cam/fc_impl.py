@@ -142,7 +142,7 @@ class JobImpl:
         self._set_active()
         fc_compound = Part.Compound()
         fc_compound.importBrepFromString(self.model_brep)
-        feature = self.doc.addObject("Part::Feature", f"root_brep")
+        feature = self.doc.addObject("Part::Feature", "root_brep")
         feature.Shape = fc_compound
 
         fc_job = FCJob.Create("Job", [feature])
