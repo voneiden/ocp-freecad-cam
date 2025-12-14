@@ -1,6 +1,7 @@
 """
 This is the user facing API of ocp_freecad_cam
 """
+
 import logging
 import os
 from copy import copy
@@ -1012,6 +1013,82 @@ class Tab(Dressup):
     def create(self, job_impl: "JobImpl", base):
         obj = super().create(job_impl, base)
 
+        # FreeCAD BUG: Need to do some manual black magic
+        # Code copied from FreeCAD GUI side
+        for i in obj.Base.InList:
+            if hasattr(i, "Group") and obj.Base.Name in [o.Name for o in i.Group]:
+                i.Group = [o for o in i.Group if o.Name != obj.Base.Name]
+
+        return obj
+
+
+class RampFactory:
+    def Create(base):
+        import FreeCAD
+        import Path.Dressup.Gui.RampEntry
+        import PathScripts
+
+        obj = FreeCAD.ActiveDocument.addObject("Path::FeaturePython", "Ramp")
+        dbo = Path.Dressup.Gui.RampEntry.ObjectDressup(obj)
+        job = PathScripts.PathUtils.findParentJob(base)
+        obj.Base = base
+        job.Proxy.addOperation(obj, base)
+        dbo.setup(obj)
+        return obj
+
+
+class Ramp(Dressup):
+    factory = RampFactory
+
+    mapping = {
+        "feed_rate": (
+            "RampFeedRate",
+            {
+                "horizontal": "Horizontal Feed Rate",
+                "vertical": "Vertical Feed Rate",
+                "ramp": "Ramp Feed Rate",
+                "custom": "Custom",
+            },
+        ),
+        "custom_feed_rate": AutoUnitKey("CustomFeedRate", "feed"),
+        "angle": AutoUnitKey("Angle", "angle"),
+        "method": (
+            "Method",
+            {
+                "normal": "RampMethod1",
+                "reverse": "RampMethod2",
+                "zigzag": "RampMethod3",
+            },
+        ),
+    }
+
+    def __init__(
+        self,
+        feed_rate: Literal["horizontal", "vertical", "ramp"] | float = "horizontal",
+        angle: float = 60.0,
+        method: Literal["normal", "reverse", "zigzag"] = "normal",
+    ):
+        """
+        Ramp dressup creates ramps instead of plunging into the material for smoother
+        operation.
+
+        See: https://wiki.freecad.org/CAM_DressupRampEntry
+
+        :param feed_rate: feed rate during the ramp movement
+        :param angle: angle of the ramp in degrees, higher value is shallower [1-89]
+        :param method: ramp method. Normal will ramp in same direction,
+                       reverse ramps backwards and zigzag will... zigzag.
+        """
+        params = {"feed_rate": feed_rate, "angle": angle, "method": method}
+        if isinstance(feed_rate, float):
+            params["custom_feed_rate"] = feed_rate
+            params["feed_rate"] = "custom"
+        self.params = map_params(self.mapping, **params)
+
+    def create(self, job_impl: "JobImpl", base):
+        obj = super().create(job_impl, base)
+
+        # TODO check this??
         # FreeCAD BUG: Need to do some manual black magic
         # Code copied from FreeCAD GUI side
         for i in obj.Base.InList:
