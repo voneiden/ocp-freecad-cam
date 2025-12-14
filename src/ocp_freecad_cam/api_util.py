@@ -285,13 +285,13 @@ def shape_source_to_compound(
 
 
 class AutoUnitKey:
-    def __init__(self, key, mode: Literal["distance", "feed"] = "distance"):
+    def __init__(self, key, mode: Literal["distance", "feed", "angle"] = "distance"):
         self.key = key
         self.mode = mode
 
 
 class AutoUnitValue:
-    def __init__(self, value, mode: Literal["distance", "feed"] = "distance"):
+    def __init__(self, value, mode: Literal["distance", "feed", "angle"] = "distance"):
         self.value = value
         self.mode = mode
 
@@ -308,6 +308,8 @@ class AutoUnitValue:
                 return "in"
             case "imperial", "feed":
                 return "in/min"
+            case _, "angle":
+                return "°"
 
         raise ValueError(f"Undefined unit/mode combination: {unit} / {self.mode}")
 
