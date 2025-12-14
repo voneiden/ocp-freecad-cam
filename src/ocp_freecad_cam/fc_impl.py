@@ -298,8 +298,7 @@ class Op(ABC):
         base = fc_op
         for dressup in self.dressups:
             fc_dressup = dressup.create(job_impl, base)
-            for k, v in dressup.params:
-                PathUtil.setProperty(fc_dressup, k, v)
+            apply_params(fc_dressup, dressup.params, job_impl.units)
             fc_dressup.Proxy.execute(fc_dressup)
             base = fc_dressup
 
