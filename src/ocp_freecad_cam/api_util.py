@@ -93,7 +93,7 @@ def extract_topods_shapes(
         valid_b3d_shapes = (
             [b3d.Compound, b3d.Solid, b3d.Part]
             if compound
-            else [b3d.Face, b3d.Wire, b3d.Vertex]
+            else [b3d.Face, b3d.Wire, b3d.Edge, b3d.Vertex]
         )
         if isinstance(shape_source, b3d.ShapeList):
             return [
