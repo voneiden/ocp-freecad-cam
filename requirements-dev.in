@@ -1,7 +1,4 @@
-black
-isort
-flake8
-Flake8-pyproject
+ruff
 pytest
 pytest-cov
 pytest-freezer
