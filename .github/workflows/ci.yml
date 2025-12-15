@@ -65,7 +65,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Required by Sonar
+          # Required by SonarCloud
           fetch-depth: 0
 
       - name: Setup Python ${{ matrix.python }}
@@ -159,7 +159,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           source freecad/venv/bin/activate
-          python -m pytest -ra -vvv --cov=src --cov-report xml tests
+          python -m pytest -ra -vvv --cov=src --cov-report=xml tests
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
@@ -172,8 +172,13 @@ jobs:
           pip install pytest-xdist
           python -m pytest -n auto -ra -vvv tests
 
-      - name: Codecov
+      - name: Override coverage report source path for SonarCloud
         if: matrix.primary
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage.xml
+        run: sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace/@g' coverage.xml
+
+      - name: SonarCloud Scan
+        if: matrix.primary
+        uses: SonarSource/sonarqube-scan-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
