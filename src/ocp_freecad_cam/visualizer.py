@@ -1,5 +1,5 @@
 import math
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from itertools import pairwise
 from typing import TYPE_CHECKING, Callable, Optional, Union
@@ -46,11 +46,11 @@ class VisualCommand(ABC):
         self.y = y
         self.z = z
 
-    def to_ais(self, start: "VisualCommand"):
-        raise NotImplementedError
+    @abstractmethod
+    def to_ais(self, start: "VisualCommand"): ...
 
-    def to_edge(self, start: "VisualCommand") -> Optional[tuple[TopoDS_Edge, str]]:
-        raise NotImplementedError
+    @abstractmethod
+    def to_edge(self, start: "VisualCommand") -> Optional[tuple[TopoDS_Edge, str]]: ...
 
     def __eq__(self, other):
         if isinstance(other, VisualCommand):
@@ -174,7 +174,7 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
                 pitch = abs(height)
             else:
                 pitch = abs(height / 2)
-            e = makeHelix(
+            e = make_helix(
                 pitch,
                 height,
                 radius,
@@ -207,7 +207,7 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
             return edge, "yellow"
 
 
-def makeHelix(
+def make_helix(
     pitch: float,
     height: float,
     radius: float,
@@ -303,7 +303,8 @@ def visualize_fc_job(
             return color_compounds
         case _:
             logger.warning(
-                f"Unsupported show_object source module ({source_module}) - visualizing as edges without color"
+                f"Unsupported show_object source module ({source_module}) - "
+                "visualizing as edges without color"
             )
             color_compounds = visual_commands_to_edges(
                 visual_commands, inverse_trsf=inverse_trsf
@@ -311,7 +312,7 @@ def visualize_fc_job(
             if color_compounds is None:
                 logger.warning("Empty job, nothing to show")
                 return None
-            for color, compound in color_compounds:
+            for _color, compound in color_compounds:
                 show_object(compound)
             return color_compounds
 
@@ -332,7 +333,7 @@ def generate_visual_commands(job):
     processor = PostProcessorFactory.get_post_processor(job, job.PostProcessor)
     postlist = processor._buildPostList()
 
-    for name, sub_op_list in postlist:
+    for _name, sub_op_list in postlist:
         for op in sub_op_list:
             if hasattr(op, "Path"):
                 commands = op.Path.Commands
@@ -346,9 +347,9 @@ def generate_visual_commands(job):
                     rel_attrs = ["x", "y", "z"]
                     for attr in rel_attrs:
                         if attr in new_params:
-                            # This will catch fire if params does not have a previous value
-                            # Not sure if FreeCAD generates code like that, so lets see
-                            # if it needs to be handled..
+                            # This will catch fire if params does not have a previous
+                            # value. Not sure if FreeCAD generates code like that, so
+                            # lets see if it needs to be handled..
                             new_params[attr] = new_params[attr] + params[attr]
                 combined_params = {**params, **new_params}
                 match command.Name:
@@ -405,10 +406,10 @@ def generate_visual_commands(job):
 
                     case "G91":
                         relative = True
-                        print("Relative mode on")
+                        logger.info("Relative mode on")
                     case "G90":
                         relative = False
-                        print("Relative mode off")
+                        logger.info("Relative mode off")
 
                     case "G98":
                         # Canned cycle mode, probably not relevant
@@ -424,7 +425,7 @@ def generate_visual_commands(job):
                             continue
                         if command.Name.startswith("M"):
                             continue
-                        print("Unknown gcode", command.Name)
+                        logger.info("Unknown gcode", command.Name)
     return visual_commands
 
 
@@ -486,5 +487,5 @@ def add_command(
         cmd = cls(**params)
         visual_commands.append(cmd)
     except TypeError as ex:
-        print("Bonk", ex)
+        logger.error("TypeError", ex)
     return params

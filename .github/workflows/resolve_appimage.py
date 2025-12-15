@@ -29,7 +29,7 @@ if __name__ == "__main__":
     for asset in assets:
         name = asset["name"]
         if name.endswith(args.suffix) and args.pyver in name and args.arch in name:
-            print(asset["browser_download_url"])
+            print(asset["browser_download_url"])  # noqa: T201
             break
     else:
         raise RuntimeError(

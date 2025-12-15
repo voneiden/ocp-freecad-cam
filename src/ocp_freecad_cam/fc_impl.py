@@ -3,14 +3,13 @@ Operation abstractions that interface directly with FreeCAD API
 
 Developer notes:
 - Setting Operation.Base resets some (?) properties
-- Pocket 3D appears to be buggy, https://github.com/FreeCAD/FreeCAD/issues/6815 possibly related
+- Pocket 3D appears to be buggy, https://github.com/FreeCAD/FreeCAD/issues/6815
+  possibly related
 
 
 """
 
-import os
-import tempfile
-from abc import ABC
+from abc import ABC, abstractmethod
 from copy import copy
 from types import ModuleType
 from typing import TYPE_CHECKING, Literal, Optional
@@ -34,9 +33,9 @@ from Path.Op import (
     PocketShape,
     Profile,
     Surface,
+    Waterline,
 )
 from Path.Op import Vcarve as FCVCarve
-from Path.Op import Waterline
 from Path.Post.Processor import PostProcessorFactory
 
 from ocp_freecad_cam.api_util import (
@@ -839,8 +838,8 @@ class Boundary(Dressup):
 
 
 class StockBase(ABC):
-    def create_stock(self, fc_job: FCJob):
-        raise NotImplementedError
+    @abstractmethod
+    def create_stock(self, fc_job: FCJob): ...
 
 
 class Stock(StockBase):
