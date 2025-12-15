@@ -44,7 +44,7 @@ Number one is now the recommended way and will be documented below
 
 ## Acquiring FreeCAD
 
-Two options. Please use at FreeCAD version 1.0.0 or greater. If for some
+Two options. Please use at FreeCAD version 1.0.1 or greater. If for some
 reason you'd prefer to use an older version of FreeCAD (v0.21), see the
 [v0.9.4](https://github.com/voneiden/ocp-freecad-cam/releases/tag/v0.9.4) release of
 ocp-freecad-cam. 
@@ -117,6 +117,25 @@ Contributions are welcome.
 * Tests
 * Documentation
 
+## Development Setup (Optional)
+
+You can optionally use pre-commit hooks to automatically check your code before committing:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+This will run ruff formatting, linting, and commitlint checks on your changes.
+
 ## PR's
 
-Apply black and isort and ensure that tests pass. Preferably also include test coverage for new code.
+Format and lint your code with ruff and ensure that tests pass. Preferably also include test coverage for new code.
+
+```bash
+ruff format src tests
+ruff check src tests
+pytest
+```
+
+Commit messages should follow [Conventional Commits](https://www.conventionalcommits.org/) format.
