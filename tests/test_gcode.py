@@ -48,7 +48,9 @@ def test_cq_coolant(job_coolant, op_coolant, assertion):
     profile_shape = box.faces("<Z")
     tool = Endmill(diameter=1)
     job = Job(top, box, "grbl", coolant=job_coolant).profile(  # noqa
-        profile_shape, tool, coolant=op_coolant  # noqa
+        profile_shape,
+        tool,
+        coolant=op_coolant,  # noqa
     )
 
     assert assertion(job.to_gcode())

@@ -7,12 +7,10 @@ from ocp_freecad_cam.api_util import AutoUnitKey, ParamMapping, apply_params, ma
 
 
 class FCBit:
-    ...
     Proxy: Bit.ToolBit
 
 
 class FCToolController:
-    ...
     Proxy: Controller.ToolController
 
 
@@ -50,9 +48,9 @@ class Toolbit:
     """ Tool number for tool change purposes """
 
     path: Optional[str] = None
-    """ 
+    """
     Tool shape path. Not needed if the shape is located in the expected
-    library folder 
+    library folder
     """
 
     # Removed these three attributes as they have currently
@@ -132,23 +130,23 @@ class Endmill(Toolbit):
     }
 
     cutting_edge_height: float | str = None
-    """ 
-    Length of the cutter aka maximum cut depth. Floats are interpreted 
+    """
+    Length of the cutter aka maximum cut depth. Floats are interpreted
     either in mm or in depending on job unit.
     """
     diameter: float | str = None
-    """ 
-    Diameter of the cutter. Floats are interpreted 
+    """
+    Diameter of the cutter. Floats are interpreted
     either in mm or in depending on job unit.
     """
     length: float | str = None
-    """ 
-    Total length of the tool from spindle holder. Floats are interpreted 
+    """
+    Total length of the tool from spindle holder. Floats are interpreted
     either in mm or in depending on job unit.
     """
     shank_diameter: float | str = None
-    """ 
-    Diameter of the shank abover the cutter. Floats are interpreted 
+    """
+    Diameter of the shank abover the cutter. Floats are interpreted
     either in mm or in depending on job unit.
     """
 
@@ -181,11 +179,11 @@ class VBit(Endmill):
     tip_angle: float = None
     """ Tip angle in degrees, typically 15, 30, 60 or 90. """
     tip_diameter: float | str = None
-    """ 
+    """
     Diameter of the tip. Friendly reminder that low grade V-bits have
     huge disparity, ie something advertised as 0.1 mm can be actually 0.3 m.
     Measure your bits if doing high detail work!
-    
+
     Floats are interpreted either in mm or in depending on Job unit.
     """
 
@@ -215,14 +213,14 @@ class Drill(Toolbit):
     }
 
     diameter: float | str = None
-    """ 
-    Diameter of the drill. Floats are interpreted either in mm or in 
-    depending on job unit. 
+    """
+    Diameter of the drill. Floats are interpreted either in mm or in
+    depending on job unit.
     """
     length: float | str = None
     """
-    Length of the drill from tip to collet. Floats are interpreted either 
-    in mm or in depending on job unit. 
+    Length of the drill from tip to collet. Floats are interpreted either
+    in mm or in depending on job unit.
     """
     tip_angle: float = None
     """
@@ -246,19 +244,19 @@ class Probe(Toolbit):
     }
 
     diameter: float | str = None
-    """ 
-    Diameter of the probe. Floats are interpreted either in mm or in 
-    depending on job unit. 
+    """
+    Diameter of the probe. Floats are interpreted either in mm or in
+    depending on job unit.
     """
     length: float | str = None
     """
-    Length of the drill from tip to collet. Floats are interpreted either 
-    in mm or in depending on job unit. 
+    Length of the drill from tip to collet. Floats are interpreted either
+    in mm or in depending on job unit.
     """
     shank_diameter: float | str = None
-    """ 
-    Diameter of the probe shank. Probably irrelevant in FreeCAD. 
-    Floats are interpreted either in mm or in depending on job unit. 
+    """
+    Diameter of the probe shank. Probably irrelevant in FreeCAD.
+    Floats are interpreted either in mm or in depending on job unit.
     """
 
 
@@ -302,7 +300,7 @@ class Bullnose(Endmill):
     flat_radius: float | str = None
     """
     The radius of the flat part and the tip of the tool.
-    Floats are interpreted either in mm or in depending on job unit. 
+    Floats are interpreted either in mm or in depending on job unit.
     """
 
 

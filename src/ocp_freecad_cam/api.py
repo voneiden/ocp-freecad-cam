@@ -8,7 +8,6 @@ from copy import copy
 from typing import Literal, Optional
 
 import Path.Log as Log
-import PathScripts.PathUtils as PathUtils
 from Path.Dressup import DogboneII, Tags
 
 from ocp_freecad_cam.api_tool import Toolbit
@@ -34,9 +33,12 @@ from ocp_freecad_cam.fc_impl import (
     Op,
     PocketOp,
     ProfileOp,
+    StockBase,
+    Surface3DOp,
+    VCarveOp,
+    WaterlineOp,
 )
 from ocp_freecad_cam.fc_impl import Stock as StockImpl
-from ocp_freecad_cam.fc_impl import StockBase, Surface3DOp, VCarveOp, WaterlineOp
 
 try:
     import cadquery as cq
@@ -47,6 +49,7 @@ try:
 except ImportError:
     b3d = None
 
+DEFAULT_STOCK = StockImpl()
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
@@ -72,7 +75,7 @@ class Job:
         clearance_height_offset="5.00 mm",
         safe_height_expression="OpStockZMax+SetupSheet.SafeHeightOffset",
         safe_height_offset="3.00 mm",
-        stock: StockBase = StockImpl(),
+        stock: StockBase = DEFAULT_STOCK,
     ):
         """
         Job is the starting point for all CAM operations. It takes a top plane
@@ -1023,7 +1026,8 @@ class Tab(Dressup):
 
 
 class RampFactory:
-    def Create(base):
+    @staticmethod
+    def Create(base):  # noqa: N802
         import FreeCAD
         import Path.Dressup.Gui.RampEntry
         import PathScripts
@@ -1096,6 +1100,3 @@ class Ramp(Dressup):
                 i.Group = [o for o in i.Group if o.Name != obj.Base.Name]
 
         return obj
-
-
-Stock = StockImpl

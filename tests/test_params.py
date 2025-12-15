@@ -37,7 +37,7 @@ def fc_cube_base_feature(fc_doc):
     brep = buffer.read().decode("utf8")
     fc_compound = Part.Compound()
     fc_compound.importBrepFromString(brep)
-    feature = fc_doc.addObject("Part::Feature", f"root_brep")
+    feature = fc_doc.addObject("Part::Feature", "root_brep")
     feature.Shape = fc_compound
     return feature
 
