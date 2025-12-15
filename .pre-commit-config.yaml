@@ -8,7 +8,9 @@ repos:
     rev: v4.5.0
     hooks:
       - id: trailing-whitespace
+        exclude: "^.+\\.brep$"
       - id: end-of-file-fixer
+        exclude: "^.+\\.brep$"
       - id: check-yaml
       - id: check-toml
       - id: check-added-large-files
