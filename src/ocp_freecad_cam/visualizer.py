@@ -425,7 +425,7 @@ def generate_visual_commands(job):
                             continue
                         if command.Name.startswith("M"):
                             continue
-                        logger.info("Unknown gcode", command.Name)
+                        logger.info(f"Unknown gcode: {command.Name}")
     return visual_commands
 
 
@@ -487,5 +487,5 @@ def add_command(
         cmd = cls(**params)
         visual_commands.append(cmd)
     except TypeError as ex:
-        logger.error("TypeError", ex)
+        logger.error("TypeError", exc_info=ex)
     return params
