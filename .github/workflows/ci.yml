@@ -89,8 +89,8 @@ jobs:
           cd $PWD/freecad
           wget -O freecad.AppImage $(python ../.github/workflows/resolve_appimage.py --release ${RELEASE} --pyver ${PYPATTERN} --arch Linux-x86_64 --suffix AppImage)
           chmod +x freecad.AppImage
-          ./freecad.AppImage --appimage-extract > /dev/null 
-          
+          ./freecad.AppImage --appimage-extract > /dev/null
+
           $PWD/squashfs-root/usr/bin/python -m venv --system-site-packages venv
           echo "$PWD/squashfs-root/usr/lib" > venv/lib/python${PYVER}/site-packages/freecad.pth
           echo "$PWD/../src" > venv/lib/python${PYVER}/site-packages/ocp_freecad_cam.pth
@@ -132,7 +132,7 @@ jobs:
         run: |
           source freecad/venv/bin/activate
           python -m pip install --upgrade pip
-          pip install cadquery build123d 
+          pip install cadquery build123d
           pip install -r requirements-dev.txt
 
       - name: Install dependencies (Windows)
@@ -140,7 +140,7 @@ jobs:
         run: |
           .\freecad\venv\Scripts\activate
           python -m pip install --upgrade pip
-          pip install cadquery build123d 
+          pip install cadquery build123d
           pip install -r requirements-dev.txt
 
       - name: Check ruff format
