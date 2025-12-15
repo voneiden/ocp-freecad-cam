@@ -114,24 +114,17 @@ jobs:
           pip install cadquery build123d 
           pip install -r requirements-dev.txt
 
-      - name: Check black
+      - name: Check ruff format
         if: matrix.primary
         run: |
           source freecad/venv/bin/activate
-          black --check src
-          black --check tests
+          ruff format --check src tests
 
-      #- name: Check flake8
-      #  uses: liskin/gh-problem-matcher-wrap@v2
-      #  with:
-      #    linters: flake8
-      #    run: flake8
-
-      - name: Check isort
+      - name: Check ruff lint
         if: matrix.primary
         run: |
           source freecad/venv/bin/activate
-          isort src tests --check-only --diff
+          ruff check src tests
 
       - name: Run tests (Linux)
         if: matrix.os == 'ubuntu-latest'
