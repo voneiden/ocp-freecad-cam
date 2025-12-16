@@ -12,7 +12,7 @@ from ocp_freecad_cam.api import Job
         ("imperial", "G20\n", "G1 X-5.0000 Y-5.5000 Z-1.0000\n"),
     ],
 )
-def test_cq_profile(test_unit, expected_gcode_1, expected_gcode_2):
+def test_cq_profile_against_face(test_unit, expected_gcode_1, expected_gcode_2):
     box = cq.Workplane().box(10, 10, 1)
     top = box.faces(">Z").workplane()
     profile_shape = box.faces("<Z")
@@ -21,5 +21,24 @@ def test_cq_profile(test_unit, expected_gcode_1, expected_gcode_2):
     job = job.profile(profile_shape, tool)
     gcode = job.to_gcode()
 
+    assert expected_gcode_1 in gcode
+    assert expected_gcode_2 in gcode
+
+
+@pytest.mark.parametrize(
+    "test_unit,expected_gcode_1,expected_gcode_2",
+    [
+        ("metric", "G21\n", "G1 X-5.000 Y-5.500 Z0.000\n"),
+        ("imperial", "G20\n", "G1 X-5.0000 Y-5.5000 Z0.0000\n"),
+    ],
+)
+def test_cq_profile_against_solid(test_unit, expected_gcode_1, expected_gcode_2):
+    """Same test as above, but the lowest Z-depth is at the top of the solid"""
+    box = cq.Workplane().box(10, 10, 1)
+    top = box.faces(">Z").workplane()
+    tool = Endmill(diameter=1)
+    job = Job(top, box, "grbl", units=test_unit)
+    job = job.profile(box, tool)
+    gcode = job.to_gcode()
     assert expected_gcode_1 in gcode
     assert expected_gcode_2 in gcode

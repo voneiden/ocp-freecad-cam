@@ -1,4 +1,5 @@
 import io
+import logging
 from dataclasses import dataclass
 from typing import Literal, Optional, TypeAlias, Union
 
@@ -32,6 +33,8 @@ try:
 except ImportError:
     b3d = None
 
+logger = logging.getLogger(__name__)
+
 TopoDS_ShapeTypes: TypeAlias = Union[
     TopoDS_Face, TopoDS_Wire, TopoDS_Edge, TopoDS_Vertex, TopoDS_Compound
 ]
@@ -63,9 +66,11 @@ ShapeSource: TypeAlias = Union[
 ShapeSourceOrIterable: TypeAlias = Union[ShapeSource, list[ShapeSource]]
 
 
+class UnknownShapeError(ValueError):
+    pass
+
+
 # todo wire needs to be broken to edges..
-
-
 def extract_topods_shapes(
     shape_source: ShapeSourceOrIterable, compound=False
 ) -> list[TopoDS_ShapeTypes]:
@@ -112,7 +117,22 @@ def extract_topods_shapes(
     if type(shape_source) in valid_topods_shapes:
         return [shape_source]
 
-    raise ValueError(f"Unknown shape source of type {type(shape_source)}")
+    raise UnknownShapeError(f"Unknown shape source of type {type(shape_source)}")
+
+
+def extract_any_topods_shapes(
+    shape_source: ShapeSourceOrIterable,
+) -> list[TopoDS_ShapeTypes]:
+    """Attempts to extract TopoDS shapes"""
+    try:
+        shapes = extract_topods_shapes(shape_source, compound=False)
+        if shapes:
+            return shapes
+    except UnknownShapeError:
+        logger.info(
+            "Did not find shapes with componud=False, trying again with compound=True"
+        )
+    return extract_topods_shapes(shape_source, compound=True)
 
 
 def split_shapes_by_type(
@@ -132,6 +152,8 @@ def split_shapes_by_type(
         elif isinstance(shape, TopoDS_Vertex):
             vertices.append(shape)
         elif isinstance(shape, TopoDS_Compound):
+            faces += break_shape_to(shape, TopAbs_FACE)
+        elif isinstance(shape, TopoDS_Solid):
             faces += break_shape_to(shape, TopAbs_FACE)
         else:
             raise ValueError(f"Unknown shape type {type(shape)}")
@@ -202,9 +224,7 @@ def shape_source_to_compound_brep(
             "compound_brep": None,
         }
 
-    shapes = extract_topods_shapes(shape_source)
-    if not shapes:
-        shapes = extract_topods_shapes(shape_source, True)
+    shapes = extract_any_topods_shapes(shape_source)
     faces, edges, vertices = split_shapes_by_type(shapes)
 
     if not faces and not edges and not vertices:
@@ -260,9 +280,7 @@ def shape_source_to_compound(
     if allow_none and shape_source is None:
         return CompoundData(0, 0, 0, None)
 
-    shapes = extract_topods_shapes(shape_source)
-    if not shapes:
-        shapes = extract_topods_shapes(shape_source, True)
+    shapes = extract_any_topods_shapes(shape_source)
     faces, edges, vertices = split_shapes_by_type(shapes)
 
     if not faces and not edges and not vertices:
