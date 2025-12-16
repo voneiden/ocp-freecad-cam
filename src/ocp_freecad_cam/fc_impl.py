@@ -208,7 +208,7 @@ class Op(ABC):
         "safe_height": "SafeHeight",
         "start_depth": "StartDepth",
         "step_down": "StepDown",
-        "coolant": "CoolantMode",
+        "coolant": ("CoolantMode", {"None": "None", "Flood": "Flood", "Mist": "Mist"}),
     }
 
     def __init__(
@@ -223,7 +223,7 @@ class Op(ABC):
         safe_height=None,
         start_depth=None,
         step_down=None,
-        coolant=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
         dressups: Optional[list["Dressup"]] = None,
     ):
         self.name = name
