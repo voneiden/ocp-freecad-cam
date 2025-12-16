@@ -203,11 +203,11 @@ class Op(ABC):
     params: ParamMapping
 
     __param_mapping = {
-        "clearance_height": "ClearanceHeight",
-        "final_depth": "FinalDepth",
-        "safe_height": "SafeHeight",
-        "start_depth": "StartDepth",
-        "step_down": "StepDown",
+        "clearance_height": AutoUnitKey("ClearanceHeight", as_expression=True),
+        "final_depth": AutoUnitKey("FinalDepth", as_expression=True),
+        "safe_height": AutoUnitKey("SafeHeight", as_expression=True),
+        "start_depth": AutoUnitKey("StartDepth", as_expression=True),
+        "step_down": AutoUnitKey("StepDown", as_expression=True),
         "coolant": ("CoolantMode", {"None": "None", "Flood": "Flood", "Mist": "Mist"}),
     }
 
