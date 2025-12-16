@@ -1,6 +1,9 @@
 {
   "bootstrap-sha": "c2e8c8f674aff1a38c8760ae17ebf57df2468413",
   "sequential-calls": true,
+  "tag-separator": "",
+  "include-v-in-tag": true,
+  "include-component-in-tag": false,
   "packages": {
     ".": {
       "release-type": "python",
