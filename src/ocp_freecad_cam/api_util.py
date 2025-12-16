@@ -303,17 +303,31 @@ def shape_source_to_compound(
 
 
 class AutoUnitKey:
-    def __init__(self, key, mode: Literal["distance", "feed", "angle"] = "distance"):
+    def __init__(
+        self,
+        key,
+        mode: Literal["distance", "feed", "angle"] = "distance",
+        as_expression=False,
+    ):
         self.key = key
         self.mode = mode
+        self.as_expression = as_expression
 
 
 class AutoUnitValue:
-    def __init__(self, value, mode: Literal["distance", "feed", "angle"] = "distance"):
+    def __init__(
+        self,
+        value,
+        mode: Literal["distance", "feed", "angle"] = "distance",
+        as_expression=False,
+    ):
         self.value = value
         self.mode = mode
+        self.as_expression = as_expression
 
     def convert(self, unit: Literal["metric", "imperial"]):
+        if self.as_expression:
+            return Expression(f"{self.value} {self.value_unit(unit)}")
         return self._convert(self.value, unit)
 
     def value_unit(self, unit: Literal["metric", "imperial"]):
@@ -355,7 +369,9 @@ def map_prop(mapping: ParamMapping, k, v):
     result = mapping[k]
     match result:
         case AutoUnitKey():
-            return result.key, AutoUnitValue(v, mode=result.mode)
+            return result.key, AutoUnitValue(
+                v, mode=result.mode, as_expression=result.as_expression
+            )
         case (nk, dv):
             return nk, dv[v]
         case nk:
