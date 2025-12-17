@@ -381,7 +381,7 @@ class FaceOp(Op):
         "clear_edges": "ClearEdges",
         "exclude_raised": "ExcludeRaisedAreas",
         "pattern": (
-            "OffsetPattern",
+            "ClearingPattern",
             {
                 "zigzag": "ZigZag",
                 "offset": "Offset",
@@ -418,7 +418,7 @@ class PocketOp(Op):
     param_mapping = {
         "finish_depth": AutoUnitKey("FinishDepth"),
         "pattern": (
-            "OffsetPattern",
+            "ClearingPattern",
             {
                 "zigzag": "ZigZag",
                 "offset": "Offset",

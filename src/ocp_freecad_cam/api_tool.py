@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
 from typing import ClassVar, Literal, Optional
 
+import FreeCAD
 from Path.Tool import Bit, Controller
+from Path.Tool.toolbit import ToolBit
 
 from ocp_freecad_cam.api_util import AutoUnitKey, ParamMapping, apply_params, map_params
 
@@ -99,13 +101,8 @@ class Toolbit:
         return self._tool_controller
 
     def create(self, fc_job, units):
-        tool_shape = Bit.findToolShape(self._file_name, self.path)
-        if not tool_shape:
-            raise ValueError(
-                f"Could not find tool {self._file_name} (path: {self.path})"
-            )
-
-        self._bit = Bit.Factory.Create(self.name, tool_shape)
+        bit = ToolBit.from_dict({"shape": self._file_name})
+        self._bit = bit.attach_to_doc(doc=FreeCAD.ActiveDocument)
         self._tool_controller = Controller.Create(
             f"TC: {self.name}", tool=self._bit, toolNumber=self.number
         )
