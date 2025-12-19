@@ -1036,6 +1036,15 @@ class RampFactory:
         dbo = Path.Dressup.Gui.RampEntry.ObjectDressup(obj)
         job = PathScripts.PathUtils.findParentJob(base)
         obj.Base = base
+
+        # Workaround for a possible FreeCAD bug where ToolController is not set for Ramp
+        obj.addProperty(
+            "App::PropertyLink",
+            "ToolController",
+            "Path",
+            "The Tool Controller that supplies the tool and feed rates",
+        )
+        obj.ToolController = base.ToolController
         job.Proxy.addOperation(obj, base)
         dbo.setup(obj)
         return obj
