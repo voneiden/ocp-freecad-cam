@@ -49,6 +49,12 @@ The result is a face that has been offset only the open directions.
 
 .. image:: images/b3d_open_pocket.png
 
+Good to know
+~~~~~~~~~~~~
+
+* Offset patterns may leave islands when working with with areas that are not circular. See
+  https://github.com/freecad/freecad/issues/25348
+
 Drill
 -------------------------
 
