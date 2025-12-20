@@ -418,7 +418,7 @@ class PocketOp(Op):
     param_mapping = {
         "finish_depth": AutoUnitKey("FinishDepth"),
         "pattern": (
-            "OffsetPattern",
+            "ClearingPattern",
             {
                 "zigzag": "ZigZag",
                 "offset": "Offset",
