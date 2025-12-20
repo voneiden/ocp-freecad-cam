@@ -120,8 +120,13 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
         self, start: VisualCommand
     ) -> tuple[Union[TopoDS_Edge, Geom_Circle], str]:
         if self.arc_plane == (0, 0, 1):
-            if self.i is None or self.j is None:
+            if self.i is None and self.j is None:
                 raise ValueError("I and J must be defined for XY arc")
+            elif self.i is None:
+                self.i = 0
+            elif self.j is None:
+                self.j = 0
+
             cx = start.x + self.i
             cy = start.y + self.j
             cz = (start.z + self.z) / 2.0
@@ -134,8 +139,13 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
             full_circle = start.x == self.x and start.y == self.y
 
         elif self.arc_plane == (0, 1, 0):
-            if self.i is None or self.k is None:
+            if self.i is None and self.k is None:
                 raise ValueError("I and K must be defined for XZ arc")
+            elif self.i is None:
+                self.i = 0
+            elif self.k is None:
+                self.k = 0
+
             cx = start.x + self.i
             cy = (start.y + self.y) / 2.0
             cz = start.z + self.k
@@ -148,8 +158,13 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
             full_circle = start.x == self.x and start.z == self.z
 
         elif self.arc_plane == (1, 0, 0):
-            if self.j is None or self.k is None:
+            if self.j is None and self.k is None:
                 raise ValueError("J and K must be defined for YZ arc")
+            elif self.j is None:
+                self.j = 0
+            elif self.k is None:
+                self.k = 0
+
             cx = (start.x + self.x) / 2.0
             cy = start.y + self.j
             cz = start.z + self.k
