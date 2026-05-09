@@ -374,6 +374,12 @@ def generate_visual_commands(job):
     visual_commands = []
 
     processor = PostProcessorFactory.get_post_processor(job, job.PostProcessor)
+    if processor is None:
+        raise RuntimeError(
+            f"Post processor '{job.PostProcessor}' not found. "
+            "Check that the post processor is installed and on the search path. "
+            "Post processor is required for a Job."
+        )
     postlist = processor._buildPostList()
 
     for _name, sub_op_list in postlist:
