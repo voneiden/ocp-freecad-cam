@@ -211,7 +211,7 @@ class Job:
         start_depth=None,
         step_down=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
-    ):
+    ) -> "Job":
         """
         2.5D profile operation will operate on faces, wires and edges.
 
