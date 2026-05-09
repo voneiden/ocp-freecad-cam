@@ -64,7 +64,7 @@ class Job:
         self,
         top_plane: PlaneSource,
         model: CompoundSource,
-        post_processor: PostProcessor = None,
+        post_processor: PostProcessor,
         units: Literal["metric", "imperial"] = "metric",
         geometry_tolerance=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
