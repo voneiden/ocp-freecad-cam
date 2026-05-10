@@ -47,8 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "windows-latest"]
-        # Support for "macos-13", "macos-latest" needs a contributor!
+        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
         release: ["1.1.1"]
         python: [ "3.11" ]
         # exclude:
@@ -76,6 +75,24 @@ jobs:
       - name: Install requests
         run: |
           python -m pip install requests
+
+      - name: Setup FreeCAD (macOS)
+        if: matrix.os == 'macos-latest'
+        env:
+          RELEASE: ${{ matrix.release }}
+          PYPATTERN: ${{ matrix.pypattern }}
+          PYVER: ${{ matrix.python }}
+        run: |
+          mkdir $PWD/freecad
+          cd $PWD/freecad
+          curl -L -o freecad.dmg $(python ../.github/workflows/resolve_appimage.py --release ${RELEASE} --pyver ${PYPATTERN} --arch macOS-arm64 --suffix dmg)
+          hdiutil attach freecad.dmg -mountpoint /Volumes/FreeCAD -nobrowse -quiet
+          cp -r "/Volumes/FreeCAD/FreeCAD.app" .
+          hdiutil detach /Volumes/FreeCAD -quiet
+
+          $PWD/FreeCAD.app/Contents/Resources/bin/python -m venv --system-site-packages venv
+          echo "$PWD/FreeCAD.app/Contents/Resources/lib" > venv/lib/python${PYVER}/site-packages/freecad.pth
+          echo "$PWD/../src" > venv/lib/python${PYVER}/site-packages/ocp_freecad_cam.pth
 
       - name: Setup FreeCAD (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -110,8 +127,8 @@ jobs:
           Invoke-Expression (".\" + (Get-ChildItem . "FreeCAD_*" | select -first 1).Name + "\bin\python -m venv --system-site-packages venv")
           "$($PWD)\..\src" | Out-File -FilePath "venv\Lib\site-packages\ocp_freecad_cam.pth"
 
-      - name: Test FreeCAD is available (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Test FreeCAD is available (Linux/macOS)
+        if: runner.os != 'Windows'
         run: |
           source freecad/venv/bin/activate
           echo $PYTHONPATH
@@ -126,8 +143,8 @@ jobs:
           python -c "import sys; print(sys.path)"
           python -c "import FreeCAD"
 
-      - name: Install dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install dependencies (Linux/macOS)
+        if: runner.os != 'Windows'
         run: |
           source freecad/venv/bin/activate
           python -m pip install --upgrade pip
@@ -159,6 +176,13 @@ jobs:
         run: |
           source freecad/venv/bin/activate
           python -m pytest -ra -vvv --cov=src --cov-report=xml tests
+
+      - name: Run tests (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          source freecad/venv/bin/activate
+          pip install pytest-xdist
+          python -m pytest -n auto -ra -vvv tests
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
