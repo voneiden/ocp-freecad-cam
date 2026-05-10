@@ -22,7 +22,7 @@ if __name__ == "__main__":
             f"https://api.github.com/repos/FreeCAD/FreeCAD/releases/tags/{args.release}"
         )
         if response.status_code != 200:
-            raise RuntimeError(f"Tag {args.version} not found")
+            raise RuntimeError(f"Tag {args.release} not found")
         release = response.json()
 
     assets = requests.get(release["assets_url"]).json()
