@@ -336,6 +336,10 @@ class ProfileOp(Op):
         "process_circles": "processCircles",
         "process_holes": "processHoles",
         "process_perimeter": "processPerimeter",
+        "join_type": (
+            "JoinType",
+            {"round": "Round", "square": "Square", "miter": "Miter"},
+        ),
     }
 
     def __init__(
@@ -349,6 +353,7 @@ class ProfileOp(Op):
         process_circles: bool,
         process_holes: bool,
         process_perimeter: bool,
+        join_type: Literal["round", "square", "miter"] = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -362,6 +367,7 @@ class ProfileOp(Op):
             process_circles=process_circles,
             process_holes=process_holes,
             process_perimeter=process_perimeter,
+            join_type=join_type,
         )
 
 
@@ -390,6 +396,8 @@ class FaceOp(Op):
                 "grid": "Grid,",
             },
         ),
+        "cut_mode": ("CutMode", {"climb": "Climb", "conventional": "Conventional"}),
+        "start_at": ("StartAt", {"center": "Center", "edge": "Edge"}),
     }
 
     def __init__(
@@ -400,6 +408,8 @@ class FaceOp(Op):
         clear_edges: bool,
         exclude_raised: bool,
         pattern: Literal["zigzag", "offset", "zigzag_offset", "line", "grid"],
+        cut_mode: Literal["climb", "conventional"] = None,
+        start_at: Literal["center", "edge"] = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -410,6 +420,8 @@ class FaceOp(Op):
             clear_edges=clear_edges,
             exclude_raised=exclude_raised,
             pattern=pattern,
+            cut_mode=cut_mode,
+            start_at=start_at,
         )
 
 
@@ -492,6 +504,7 @@ class DrillOp(Op):
         "peck_enabled": "PeckEnabled",
         "retract_height": "RetractHeight",
         "chip_break_enabled": "chipBreakEnabled",
+        "retract_mode": ("RetractMode", {"G98": "G98", "G99": "G99"}),
     }
 
     def __init__(
@@ -503,12 +516,13 @@ class DrillOp(Op):
         keep_tool_down: Optional[bool],
         retract_height: Optional[bool],
         chip_break_enabled: Optional[bool],
+        retract_mode: Optional[Literal["G98", "G99"]] = None,
         **kwargs,
     ):
         """
         Attributes in FreeCAD but not here:
-        * RetractMode is overridden by KeepToolDown in FC code
         * AddTipLength is not used anywhere?
+        Note: RetractMode may be overridden by KeepToolDown in FC code.
         """
 
         super().__init__(*args, **kwargs)
@@ -525,6 +539,7 @@ class DrillOp(Op):
             peck_enabled=peck_enabled,
             retract_height=retract_height,
             chip_break_enabled=chip_break_enabled,
+            retract_mode=retract_mode,
         )
 
 
@@ -536,6 +551,7 @@ class HelixOp(Op):
         "start_radius": "StartRadius",
         "start_side": ("StartSide", {"out": "Outside", "in": "Inside"}),
         "step_over": "StepOver",
+        "cut_mode": ("CutMode", {"climb": "Climb", "conventional": "Conventional"}),
     }
 
     def __init__(
@@ -546,6 +562,7 @@ class HelixOp(Op):
         start_radius: Optional[float],
         start_side: Optional[Literal["out", "in"]],
         step_over: Optional[float],
+        cut_mode: Optional[Literal["climb", "conventional"]] = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -556,6 +573,7 @@ class HelixOp(Op):
             start_radius=start_radius,
             start_side=start_side,
             step_over=step_over,
+            cut_mode=cut_mode,
         )
 
 
@@ -575,6 +593,8 @@ class DeburrOp(Op):
         "extra_depth": AutoUnitKey("ExtraDepth"),
         "direction": ("Direction", {"cw": "CW", "ccw": "CCW"}),
         "entry_point": "EntryPoint",
+        "join": ("Join", {"round": "Round", "miter": "Miter"}),
+        "side": ("Side", {"out": "Outside", "in": "Inside"}),
     }
 
     def __init__(
@@ -584,6 +604,8 @@ class DeburrOp(Op):
         extra_depth: float,
         direction: Literal["cw", "ccw"],
         entry_point: int,
+        join: Literal["round", "miter"] = None,
+        side: Literal["out", "in"] = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -593,6 +615,8 @@ class DeburrOp(Op):
             extra_depth=extra_depth,
             direction=direction,
             entry_point=entry_point,
+            join=join,
+            side=side,
         )
 
 
@@ -654,6 +678,17 @@ class Surface3DOp(Op):
         "internal_features_cut": "InternalFeaturesCut",
         "start_point": AutoUnitKey("StartPoint"),
         "scan_type": ("ScanType", {"planar": "Planar", "rotational": "Rotational"}),
+        "drop_cutter_dir": ("DropCutterDir", {"x": "X", "y": "Y"}),
+        "pattern_center_at": (
+            "PatternCenterAt",
+            {
+                "center_of_mass": "CenterOfMass",
+                "center_of_bound_box": "CenterOfBoundBox",
+                "xmin_ymin": "XminYmin",
+                "custom": "Custom",
+            },
+        ),
+        "rotation_axis": ("RotationAxis", {"x": "X", "y": "Y"}),
     }
 
     def __init__(
@@ -686,6 +721,11 @@ class Surface3DOp(Op):
         internal_features_cut: bool,
         start_point: tuple[float | str, float | str, float | str],
         scan_type: Literal["planar", "rotational"],
+        drop_cutter_dir: Literal["x", "y"] = None,
+        pattern_center_at: Literal[
+            "center_of_mass", "center_of_bound_box", "xmin_ymin", "custom"
+        ] = None,
+        rotation_axis: Literal["x", "y"] = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -716,6 +756,9 @@ class Surface3DOp(Op):
             internal_features_cut=internal_features_cut,
             start_point=start_point,
             scan_type=scan_type,
+            drop_cutter_dir=drop_cutter_dir,
+            pattern_center_at=pattern_center_at,
+            rotation_axis=rotation_axis,
         )
 
 
