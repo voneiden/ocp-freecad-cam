@@ -11,6 +11,7 @@ from ocp_freecad_cam.api_util import AutoUnitKey
 from ocp_freecad_cam.fc_impl import (
     DeburrOp,
     DrillOp,
+    FaceLegacyOp,
     FaceOp,
     HelixOp,
     PocketOp,
@@ -62,30 +63,73 @@ def vbit_tc(fc_job, unit):
     return vbit.tool_controller(fc_job, unit)
 
 
-@pytest.mark.parametrize(
-    "module,tc_f",
-    [
-        (ProfileOp, endmill_tc),
-        (FaceOp, endmill_tc),
-        (PocketOp, endmill_tc),
-        (DrillOp, endmill_tc),
-        (HelixOp, endmill_tc),
-        (DeburrOp, endmill_tc),
-        (VCarveOp, vbit_tc),
-        (Surface3DOp, endmill_tc),
-    ],
-)
+OP_PARAMS = [
+    (ProfileOp, endmill_tc),
+    (FaceLegacyOp, endmill_tc),
+    (FaceOp, endmill_tc),
+    (PocketOp, endmill_tc),
+    (DrillOp, endmill_tc),
+    (HelixOp, endmill_tc),
+    (DeburrOp, endmill_tc),
+    (VCarveOp, vbit_tc),
+    (Surface3DOp, endmill_tc),
+]
+
+
+def _mapped_fc_prop_names(module) -> set[str]:
+    """Return the set of FC property names referenced in a module's param_mapping,
+    including the base Op class private mapping (e.g. CoolantMode)."""
+    from ocp_freecad_cam.fc_impl import Op
+
+    names = set()
+    for mapping in (module.param_mapping, Op._Op__param_mapping):
+        for param in mapping.values():
+            if isinstance(param, AutoUnitKey):
+                names.add(param.key)
+            elif isinstance(param, tuple):
+                names.add(param[0])
+            else:
+                names.add(param)
+    return names
+
+
+@pytest.mark.parametrize("module,tc_f", OP_PARAMS)
 def test_params(fc_job, module, tc_f):
     tc = tc_f(fc_job.Proxy, "metric")
     fc_instance = module.fc_module.Create("test")
     fc_instance.ToolController = tc
 
     for param in module.param_mapping.values():
-        enumeration = None
-
         if isinstance(param, AutoUnitKey):
-            param = param.key
+            fc_prop = param.key
+            assert hasattr(fc_instance, fc_prop), f"FC property '{fc_prop}' not found"
         elif isinstance(param, tuple):
-            param, enumeration = param
+            fc_prop, value_dict = param
+            assert hasattr(fc_instance, fc_prop), f"FC property '{fc_prop}' not found"
+            fc_choices = set(fc_instance.getEnumerationsOfProperty(fc_prop))
+            our_choices = set(value_dict.values())
+            assert our_choices == fc_choices, (
+                f"'{fc_prop}' enum mismatch: "
+                f"extra in ours={our_choices - fc_choices}, "
+                f"missing from ours={fc_choices - our_choices}"
+            )
+        else:
+            assert hasattr(fc_instance, param), f"FC property '{param}' not found"
 
-        assert hasattr(fc_instance, param)
+
+@pytest.mark.parametrize("module,tc_f", OP_PARAMS)
+def test_enum_coverage(fc_job, module, tc_f):
+    """All FC PropertyEnumeration properties must appear in param_mapping."""
+    tc = tc_f(fc_job.Proxy, "metric")
+    fc_instance = module.fc_module.Create("test")
+    fc_instance.ToolController = tc
+
+    mapped = _mapped_fc_prop_names(module)
+    unmapped = [
+        p
+        for p in fc_instance.PropertiesList
+        if "Enumeration" in fc_instance.getTypeIdOfProperty(p) and p not in mapped
+    ]
+    assert not unmapped, (
+        f"{module.__name__} has unmapped FC enum properties: {unmapped}"
+    )

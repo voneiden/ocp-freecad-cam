@@ -120,8 +120,13 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
         self, start: VisualCommand
     ) -> tuple[Union[TopoDS_Edge, Geom_Circle], str]:
         if self.arc_plane == (0, 0, 1):
-            if self.i is None or self.j is None:
+            if self.i is None and self.j is None:
                 raise ValueError("I and J must be defined for XY arc")
+            elif self.i is None:
+                self.i = 0
+            elif self.j is None:
+                self.j = 0
+
             cx = start.x + self.i
             cy = start.y + self.j
             cz = (start.z + self.z) / 2.0
@@ -134,8 +139,13 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
             full_circle = start.x == self.x and start.y == self.y
 
         elif self.arc_plane == (0, 1, 0):
-            if self.i is None or self.k is None:
+            if self.i is None and self.k is None:
                 raise ValueError("I and K must be defined for XZ arc")
+            elif self.i is None:
+                self.i = 0
+            elif self.k is None:
+                self.k = 0
+
             cx = start.x + self.i
             cy = (start.y + self.y) / 2.0
             cz = start.z + self.k
@@ -148,8 +158,13 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
             full_circle = start.x == self.x and start.z == self.z
 
         elif self.arc_plane == (1, 0, 0):
-            if self.j is None or self.k is None:
+            if self.j is None and self.k is None:
                 raise ValueError("J and K must be defined for YZ arc")
+            elif self.j is None:
+                self.j = 0
+            elif self.k is None:
+                self.k = 0
+
             cx = (start.x + self.x) / 2.0
             cy = start.y + self.j
             cz = start.z + self.k
@@ -166,14 +181,36 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
 
         c = gp_Pnt(cx, cy, cz)
         if height:
-            # FreeCAD helix always starts from (X+radius, Y)
-            # Same thing for CQ helix. Only need to calc pitch
-            # FreeCAD also produces only full or half circle, so
-            # exploit that :-D
+            # Calculate the arc angle to determine proper pitch
+            if self.arc_plane == (0, 0, 1):  # XY plane
+                v1 = (start.x - cx, start.y - cy)
+                v2 = (self.x - cx, self.y - cy)
+            elif self.arc_plane == (0, 1, 0):  # XZ plane
+                v1 = (start.x - cx, start.z - cz)
+                v2 = (self.x - cx, self.z - cz)
+            else:  # YZ plane (1, 0, 0)
+                v1 = (start.y - cy, start.z - cz)
+                v2 = (self.y - cy, self.z - cz)
+
             if full_circle:
+                arc_angle = 2 * math.pi
+                angle_start = math.atan2(v1[1], v1[0])
                 pitch = abs(height)
             else:
-                pitch = abs(height / 2)
+                angle_start = math.atan2(v1[1], v1[0])
+                angle_end = math.atan2(v2[1], v2[0])
+                angle_diff = angle_end - angle_start
+
+                if self.clockwise:
+                    if angle_diff > 0:
+                        angle_diff -= 2 * math.pi
+                else:
+                    if angle_diff < 0:
+                        angle_diff += 2 * math.pi
+
+                arc_angle = abs(angle_diff)
+                pitch = abs(height) * (2 * math.pi) / arc_angle
+
             e = make_helix(
                 pitch,
                 height,
@@ -181,6 +218,7 @@ class ArcVisualCommand(LinearVisualCommand, ABC):
                 start_center,
                 gp_Dir(*self.arc_plane),
                 lefthand=not self.clockwise,
+                start_angle=angle_start,
             )
             return e, "green"
 
@@ -215,6 +253,7 @@ def make_helix(
     dir: gp_Dir,
     angle: float = 360.0,
     lefthand: bool = False,
+    start_angle: float = 0.0,
 ) -> "TopoDS_Edge":
     """
     Make a helix with a given pitch, height and radius
@@ -239,9 +278,13 @@ def make_helix(
 
     # 2. construct a segment in the u,v domain
     if lefthand:
-        geom_line = Geom2d_Line(gp_Pnt2d(0.0, 0.0), gp_Dir2d(-2 * math.pi, pitch))
+        geom_line = Geom2d_Line(
+            gp_Pnt2d(start_angle, 0.0), gp_Dir2d(-2 * math.pi, pitch)
+        )
     else:
-        geom_line = Geom2d_Line(gp_Pnt2d(0.0, 0.0), gp_Dir2d(2 * math.pi, pitch))
+        geom_line = Geom2d_Line(
+            gp_Pnt2d(start_angle, 0.0), gp_Dir2d(2 * math.pi, pitch)
+        )
 
     # 3. put it together into am edge
     n_turns = height / pitch
@@ -331,6 +374,12 @@ def generate_visual_commands(job):
     visual_commands = []
 
     processor = PostProcessorFactory.get_post_processor(job, job.PostProcessor)
+    if processor is None:
+        raise RuntimeError(
+            f"Post processor '{job.PostProcessor}' not found. "
+            "Check that the post processor is installed and on the search path. "
+            "Post processor is required for a Job."
+        )
     postlist = processor._buildPostList()
 
     for _name, sub_op_list in postlist:

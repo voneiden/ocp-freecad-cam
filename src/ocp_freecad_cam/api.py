@@ -27,6 +27,7 @@ from ocp_freecad_cam.fc_impl import (
     Dressup,
     DrillOp,
     EngraveOp,
+    FaceLegacyOp,
     FaceOp,
     HelixOp,
     JobImpl,
@@ -64,7 +65,7 @@ class Job:
         self,
         top_plane: PlaneSource,
         model: CompoundSource,
-        post_processor: PostProcessor = None,
+        post_processor: PostProcessor,
         units: Literal["metric", "imperial"] = "metric",
         geometry_tolerance=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
@@ -203,6 +204,7 @@ class Job:
         circles: bool = False,
         holes: bool = False,
         perimeter: bool = True,
+        join_type: Literal["round", "square", "miter"] = None,
         dressups: list["Dressup"] = None,
         # OP depth
         clearance_height=None,
@@ -211,7 +213,7 @@ class Job:
         start_depth=None,
         step_down=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
-    ):
+    ) -> "Job":
         """
         2.5D profile operation will operate on faces, wires and edges.
 
@@ -252,9 +254,64 @@ class Job:
             process_circles=circles,
             process_holes=holes,
             process_perimeter=perimeter,
+            join_type=join_type,
             # Op settings
             tool=tool,
             dressups=dressups or [],
+            compound_data=shape_source_to_compound(shapes),
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
+            coolant=coolant,
+        )
+        return self._add_op(op)
+
+    def face_legacy(
+        self,
+        shapes: ShapeSourceOrIterable,
+        tool: "Toolbit",
+        *,
+        finish_depth: float = None,
+        boundary: Literal["boundbox", "face", "perimeter", "stock"] = None,
+        clear_edges: bool = None,
+        exclude_raised: bool = None,
+        pattern: Literal["zigzag", "offset", "zigzag_offset", "line", "grid"] = None,
+        cut_mode: Literal["climb", "conventional"] = None,
+        start_at: Literal["center", "edge"] = None,
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
+    ) -> "Job":
+        """
+        Legacy 2.5D face operation (MillFace). Prefer face() which uses MillFacing.
+
+        See https://wiki.freecad.org/Path_MillFace for usage notes.
+
+        :param shapes: Shape(s) to perform this OP on
+        :param tool: Tool to use in this OP
+        :param finish_depth:
+        :param boundary:
+        :param clear_edges:
+        :param exclude_raised:
+        :param pattern:
+        :return:
+        """
+
+        op = FaceLegacyOp(
+            finish_depth=finish_depth,
+            boundary=boundary,
+            clear_edges=clear_edges,
+            exclude_raised=exclude_raised,
+            pattern=pattern,
+            cut_mode=cut_mode,
+            start_at=start_at,
+            tool=tool,
             compound_data=shape_source_to_compound(shapes),
             clearance_height=clearance_height,
             final_depth=final_depth,
@@ -270,11 +327,14 @@ class Job:
         shapes: ShapeSourceOrIterable,
         tool: "Toolbit",
         *,
-        finish_depth: float = None,
-        boundary: Literal["boundbox", "face", "perimeter", "stock"] = None,
-        clear_edges: bool = None,
-        exclude_raised: bool = None,
-        pattern: Literal["zigzag", "offset", "zigzag_offset", "line", "grid"] = None,
+        cut_mode: Literal["climb", "conventional"] = None,
+        pattern: Literal["zigzag", "bidirectional", "directional", "spiral"] = None,
+        angle: float = None,
+        step_over: float = None,
+        axial_stock_to_leave: float = None,
+        pass_extension: float = None,
+        stock_extension: float = None,
+        reverse: bool = None,
         # OP depth
         clearance_height=None,
         final_depth=None,
@@ -284,30 +344,34 @@ class Job:
         coolant: Literal["None", "Flood", "Mist"] = "None",
     ) -> "Job":
         """
-        2.5D face operation to clear material from a surface.
+        2.5D face operation to clear material from a surface (MillFacing).
 
-        See https://wiki.freecad.org/Path_MillFace for usage notes.
+        See https://wiki.freecad.org/CAM_MillFacing for usage notes.
 
         :param shapes: Shape(s) to perform this OP on
         :param tool: Tool to use in this OP
-        :param finish_depth:
-        :param boundary:
-        :param clear_edges:
-        :param exclude_raised:
-        :param pattern:
+        :param cut_mode: "climb" or "conventional"
+        :param pattern: "zigzag", "bidirectional", "directional", or "spiral"
+        :param angle: Angle for directional patterns
+        :param step_over: Stepover percentage of tool diameter
+        :param axial_stock_to_leave: Stock to leave in Z
+        :param pass_extension: Distance to extend cuts beyond boundary
+        :param stock_extension: Extends boundary in both directions
+        :param reverse: Reverse the cutting direction
         :return:
         """
 
         op = FaceOp(
-            finish_depth=finish_depth,
-            boundary=boundary,
-            clear_edges=clear_edges,
-            exclude_raised=exclude_raised,
+            cut_mode=cut_mode,
             pattern=pattern,
+            angle=angle,
+            step_over=step_over,
+            axial_stock_to_leave=axial_stock_to_leave,
+            pass_extension=pass_extension,
+            stock_extension=stock_extension,
+            reverse=reverse,
             tool=tool,
-            compound_data=shape_source_to_compound(
-                shapes,
-            ),
+            compound_data=shape_source_to_compound(shapes),
             clearance_height=clearance_height,
             final_depth=final_depth,
             safe_height=safe_height,
@@ -402,6 +466,7 @@ class Job:
         keep_tool_down: Optional[bool] = False,
         retract_height: Optional[bool] = None,
         chip_break_enabled: Optional[bool] = False,
+        retract_mode: Optional[Literal["G98", "G99"]] = None,
         # OP depth
         clearance_height=None,
         final_depth=None,
@@ -435,6 +500,7 @@ class Job:
             keep_tool_down=keep_tool_down,
             retract_height=retract_height,
             chip_break_enabled=chip_break_enabled,
+            retract_mode=retract_mode,
             compound_data=shape_source_to_compound(shapes),
             clearance_height=clearance_height,
             final_depth=final_depth,
@@ -455,6 +521,7 @@ class Job:
         start_radius: Optional[float] = 0,
         start_side: Optional[Literal["out", "in"]] = "out",
         step_over: Optional[float] = 50,
+        cut_mode: Optional[Literal["climb", "conventional"]] = None,
         # OP depth
         clearance_height=None,
         final_depth=None,
@@ -476,6 +543,7 @@ class Job:
         :param start_radius: inner radius?
         :param start_side: define where the op starts when doing multiple passes
         :param step_over: percentage of tool diameter to step over
+        :param cut_mode: "climb" or "conventional"
         :return:
         """
 
@@ -485,6 +553,7 @@ class Job:
             start_radius=start_radius,
             start_side=start_side,
             step_over=step_over,
+            cut_mode=cut_mode,
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(
@@ -508,6 +577,8 @@ class Job:
         extra_depth: float | str = "0.5 mm",
         direction: Literal["cw", "ccw"] = "cw",
         entry_point: int = 0,
+        join: Literal["round", "miter"] = None,
+        side: Literal["out", "in"] = None,
         # OP depth
         clearance_height=None,
         final_depth=None,
@@ -527,6 +598,8 @@ class Job:
         :param extra_depth:
         :param direction:
         :param entry_point:
+        :param join:
+        :param side:
         :param clearance_height:
         :param final_depth:
         :param safe_height:
@@ -539,6 +612,8 @@ class Job:
             extra_depth=extra_depth,
             direction=direction,
             entry_point=entry_point,
+            join=join,
+            side=side,
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(shapes),
@@ -671,6 +746,11 @@ class Job:
         internal_features_cut: bool = True,
         start_point: tuple[float | str, float | str, float | str] = None,
         scan_type: Literal["planar", "rotational"] = "planar",
+        drop_cutter_dir: Literal["x", "y"] = None,
+        pattern_center_at: Literal[
+            "center_of_mass", "center_of_bound_box", "xmin_ymin", "custom"
+        ] = None,
+        rotation_axis: Literal["x", "y"] = None,
         # OP depth
         clearance_height=None,
         final_depth=None,
@@ -714,6 +794,9 @@ class Job:
         :param internal_features_cut:
         :param start_point:
         :param scan_type:
+        :param drop_cutter_dir:
+        :param pattern_center_at:
+        :param rotation_axis:
         :param clearance_height:
         :param final_depth:
         :param safe_height:
@@ -747,6 +830,9 @@ class Job:
             internal_features_cut=internal_features_cut,
             start_point=start_point,
             scan_type=scan_type,
+            drop_cutter_dir=drop_cutter_dir,
+            pattern_center_at=pattern_center_at,
+            rotation_axis=rotation_axis,
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(shapes, allow_none=True),
@@ -1036,6 +1122,15 @@ class RampFactory:
         dbo = Path.Dressup.Gui.RampEntry.ObjectDressup(obj)
         job = PathScripts.PathUtils.findParentJob(base)
         obj.Base = base
+
+        # Workaround for a possible FreeCAD bug where ToolController is not set for Ramp
+        obj.addProperty(
+            "App::PropertyLink",
+            "ToolController",
+            "Path",
+            "The Tool Controller that supplies the tool and feed rates",
+        )
+        obj.ToolController = base.ToolController
         job.Proxy.addOperation(obj, base)
         dbo.setup(obj)
         return obj

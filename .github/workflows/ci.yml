@@ -132,16 +132,16 @@ jobs:
         run: |
           source freecad/venv/bin/activate
           python -m pip install --upgrade pip
-          pip install cadquery build123d
-          pip install -r requirements-dev.txt
+          pip install --ignore-installed cadquery build123d
+          pip install --ignore-installed -r requirements-dev.txt
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           .\freecad\venv\Scripts\activate
           python -m pip install --upgrade pip
-          pip install cadquery build123d
-          pip install -r requirements-dev.txt
+          pip install --ignore-installed cadquery build123d
+          pip install --ignore-installed -r requirements-dev.txt
 
       - name: Check ruff format
         if: matrix.primary
