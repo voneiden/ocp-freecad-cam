@@ -49,15 +49,14 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "windows-latest"]
         # Support for "macos-13", "macos-latest" needs a contributor!
-        release: ["latest", "1.0.1"]
+        release: ["1.0.1", "1.0.2"]
         python: [ "3.11" ]
         # exclude:
         include:
-          - python: "3.11"
-            release: "latest"
-            os: "ubuntu-latest"
-            primary: true
-
+        #   - python: "3.11"
+        #     release: "latest"
+        #     os: "ubuntu-latest"
+        #     primary: true
           - python: "3.11"
             pypattern: "py311"
 
