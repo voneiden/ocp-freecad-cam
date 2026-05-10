@@ -1,5 +1,36 @@
 # Changelog
 
+## [2.0.0](https://github.com/voneiden/ocp-freecad-cam/compare/v1.1.0...v2.0.0) (2026-05-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* add AutoUnitKey to Op params
+* add FreeCAD 1.1.0 support
+
+### Features
+
+* Add FreeCAD 1.1.0 support ([5ed8fdb](https://github.com/voneiden/ocp-freecad-cam/commit/5ed8fdb9a01b32fa173919763a93dea28e6f4c01)), closes [#51](https://github.com/voneiden/ocp-freecad-cam/issues/51)
+* Add missing params to operations ([acaaf36](https://github.com/voneiden/ocp-freecad-cam/commit/acaaf36efa53493482a02d4b5fae44b9c6cbe212))
+
+
+### Bug Fixes
+
+* Add AutoUnitKey to Op params ([0cc0a58](https://github.com/voneiden/ocp-freecad-cam/commit/0cc0a58ac05ca4f989af861362f1be3991f8cce3)), closes [#40](https://github.com/voneiden/ocp-freecad-cam/issues/40)
+* Add clear error message for invalid post processor ([ffabcb7](https://github.com/voneiden/ocp-freecad-cam/commit/ffabcb76b585703dd1e58ec785372daa52e80cff))
+* Helix visualization issues ([ba9e3d0](https://github.com/voneiden/ocp-freecad-cam/commit/ba9e3d005fb32c65f4a43233af6e0f4a0f667ba2))
+* Incorrect ClearingPattern value for grid ([77e63da](https://github.com/voneiden/ocp-freecad-cam/commit/77e63daff2e45e2758ba2134dcf2cc43e826c406))
+* Profile return type missing ([28c6295](https://github.com/voneiden/ocp-freecad-cam/commit/28c6295351b0b423ad4e6ee98060c6493174eb30))
+* Relax arc coordinate requirements in visualizer ([61897ce](https://github.com/voneiden/ocp-freecad-cam/commit/61897cececf0741d632cf1a3dea318c45195caa3))
+* Require post_processor for job ([c41677a](https://github.com/voneiden/ocp-freecad-cam/commit/c41677a4fd08b63377e823f00721c134587d5fa1))
+* Set ToolController in RampEntry dressup ([370df84](https://github.com/voneiden/ocp-freecad-cam/commit/370df84de0ac64b0877d0f2b51b43f4449cc110e))
+
+
+### Documentation
+
+* Document a know issue/limitation with offset patterns ([203c7e0](https://github.com/voneiden/ocp-freecad-cam/commit/203c7e0c124a9251be82ba22dd2c1058ae28d261))
+* Update readme ([7b7a34c](https://github.com/voneiden/ocp-freecad-cam/commit/7b7a34c2ba48f929dc42e3cb0a5c9cedfcead57d))
+
 ## [1.1.0](https://github.com/voneiden/ocp-freecad-cam/compare/ocp-freecad-cam-v1.0.0...ocp-freecad-cam-v1.1.0) (2025-12-16)
 
 
