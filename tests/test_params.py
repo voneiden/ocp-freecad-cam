@@ -77,15 +77,19 @@ OP_PARAMS = [
 
 
 def _mapped_fc_prop_names(module) -> set[str]:
-    """Return the set of FC property names referenced in a module's param_mapping."""
+    """Return the set of FC property names referenced in a module's param_mapping,
+    including the base Op class private mapping (e.g. CoolantMode)."""
+    from ocp_freecad_cam.fc_impl import Op
+
     names = set()
-    for param in module.param_mapping.values():
-        if isinstance(param, AutoUnitKey):
-            names.add(param.key)
-        elif isinstance(param, tuple):
-            names.add(param[0])
-        else:
-            names.add(param)
+    for mapping in (module.param_mapping, Op._Op__param_mapping):
+        for param in mapping.values():
+            if isinstance(param, AutoUnitKey):
+                names.add(param.key)
+            elif isinstance(param, tuple):
+                names.add(param[0])
+            else:
+                names.add(param)
     return names
 
 

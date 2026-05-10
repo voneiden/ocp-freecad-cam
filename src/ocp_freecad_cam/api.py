@@ -204,6 +204,7 @@ class Job:
         circles: bool = False,
         holes: bool = False,
         perimeter: bool = True,
+        join_type: Literal["round", "square", "miter"] = None,
         dressups: list["Dressup"] = None,
         # OP depth
         clearance_height=None,
@@ -253,6 +254,7 @@ class Job:
             process_circles=circles,
             process_holes=holes,
             process_perimeter=perimeter,
+            join_type=join_type,
             # Op settings
             tool=tool,
             dressups=dressups or [],
@@ -276,6 +278,8 @@ class Job:
         clear_edges: bool = None,
         exclude_raised: bool = None,
         pattern: Literal["zigzag", "offset", "zigzag_offset", "line", "grid"] = None,
+        cut_mode: Literal["climb", "conventional"] = None,
+        start_at: Literal["center", "edge"] = None,
         # OP depth
         clearance_height=None,
         final_depth=None,
@@ -305,6 +309,8 @@ class Job:
             clear_edges=clear_edges,
             exclude_raised=exclude_raised,
             pattern=pattern,
+            cut_mode=cut_mode,
+            start_at=start_at,
             tool=tool,
             compound_data=shape_source_to_compound(shapes),
             clearance_height=clearance_height,
@@ -460,6 +466,7 @@ class Job:
         keep_tool_down: Optional[bool] = False,
         retract_height: Optional[bool] = None,
         chip_break_enabled: Optional[bool] = False,
+        retract_mode: Optional[Literal["G98", "G99"]] = None,
         # OP depth
         clearance_height=None,
         final_depth=None,
@@ -493,6 +500,7 @@ class Job:
             keep_tool_down=keep_tool_down,
             retract_height=retract_height,
             chip_break_enabled=chip_break_enabled,
+            retract_mode=retract_mode,
             compound_data=shape_source_to_compound(shapes),
             clearance_height=clearance_height,
             final_depth=final_depth,
@@ -513,6 +521,7 @@ class Job:
         start_radius: Optional[float] = 0,
         start_side: Optional[Literal["out", "in"]] = "out",
         step_over: Optional[float] = 50,
+        cut_mode: Optional[Literal["climb", "conventional"]] = None,
         # OP depth
         clearance_height=None,
         final_depth=None,
@@ -534,6 +543,7 @@ class Job:
         :param start_radius: inner radius?
         :param start_side: define where the op starts when doing multiple passes
         :param step_over: percentage of tool diameter to step over
+        :param cut_mode: "climb" or "conventional"
         :return:
         """
 
@@ -543,6 +553,7 @@ class Job:
             start_radius=start_radius,
             start_side=start_side,
             step_over=step_over,
+            cut_mode=cut_mode,
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(
@@ -566,6 +577,8 @@ class Job:
         extra_depth: float | str = "0.5 mm",
         direction: Literal["cw", "ccw"] = "cw",
         entry_point: int = 0,
+        join: Literal["round", "miter"] = None,
+        side: Literal["out", "in"] = None,
         # OP depth
         clearance_height=None,
         final_depth=None,
@@ -585,6 +598,8 @@ class Job:
         :param extra_depth:
         :param direction:
         :param entry_point:
+        :param join:
+        :param side:
         :param clearance_height:
         :param final_depth:
         :param safe_height:
@@ -597,6 +612,8 @@ class Job:
             extra_depth=extra_depth,
             direction=direction,
             entry_point=entry_point,
+            join=join,
+            side=side,
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(shapes),
@@ -729,6 +746,11 @@ class Job:
         internal_features_cut: bool = True,
         start_point: tuple[float | str, float | str, float | str] = None,
         scan_type: Literal["planar", "rotational"] = "planar",
+        drop_cutter_dir: Literal["x", "y"] = None,
+        pattern_center_at: Literal[
+            "center_of_mass", "center_of_bound_box", "xmin_ymin", "custom"
+        ] = None,
+        rotation_axis: Literal["x", "y"] = None,
         # OP depth
         clearance_height=None,
         final_depth=None,
@@ -772,6 +794,9 @@ class Job:
         :param internal_features_cut:
         :param start_point:
         :param scan_type:
+        :param drop_cutter_dir:
+        :param pattern_center_at:
+        :param rotation_axis:
         :param clearance_height:
         :param final_depth:
         :param safe_height:
@@ -805,6 +830,9 @@ class Job:
             internal_features_cut=internal_features_cut,
             start_point=start_point,
             scan_type=scan_type,
+            drop_cutter_dir=drop_cutter_dir,
+            pattern_center_at=pattern_center_at,
+            rotation_axis=rotation_axis,
             # Op
             tool=tool,
             compound_data=shape_source_to_compound(shapes, allow_none=True),
