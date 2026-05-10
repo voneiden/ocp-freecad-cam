@@ -52,7 +52,7 @@ The result is a face that has been offset only the open directions.
 Good to know
 ~~~~~~~~~~~~
 
-* Offset patterns may leave islands when working with with areas that are not circular. See 
+* Offset patterns may leave islands when working with with areas that are not circular. See
   https://github.com/freecad/freecad/issues/25348
 
 Drill
