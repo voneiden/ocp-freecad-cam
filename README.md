@@ -42,12 +42,15 @@ There are at least three options to approach this
 
 Number one is now the recommended way and will be documented below
 
-## Acquiring FreeCAD
+## Acquiring FreeCAD and supported versions
 
-Two options. Please use at FreeCAD version 1.0.1 or greater. If for some
-reason you'd prefer to use an older version of FreeCAD (v0.21), see the
-[v0.9.4](https://github.com/voneiden/ocp-freecad-cam/releases/tag/v0.9.4) release of
-ocp-freecad-cam.
+| FreeCAD version | FreeCAD Python version | ocp-freecad-cam version | ocp-freecad-cam status |
+| --------------- | ---------------------- | ----------------------- | ---------------------- |
+| weekly          | 3.11                   | -                       | work in progress       |
+| 1.1.1           | 3.11                   | [v2.0.0](https://github.com/voneiden/ocp-freecad-cam/releases/tag/v2.0.0) | ✅ dev |
+| 1.0.1 - 1.0.2   | 3.11                   | [v1.1.0](https://github.com/voneiden/ocp-freecad-cam/releases/tag/v1.1.0) | ❌ EOL |
+| 0.21            | 3.10                   | [v0.9.4](https://github.com/voneiden/ocp-freecad-cam/releases/tag/v0.9.4) | ❌ EOL |
+
 
 1) Official distributions https://www.freecad.org/downloads.php
 2) Official portable packages https://github.com/FreeCAD/FreeCAD/releases
