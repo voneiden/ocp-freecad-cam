@@ -27,6 +27,7 @@ from ocp_freecad_cam.fc_impl import (
     Dressup,
     DrillOp,
     EngraveOp,
+    FaceLegacyOp,
     FaceOp,
     HelixOp,
     JobImpl,
@@ -265,7 +266,7 @@ class Job:
         )
         return self._add_op(op)
 
-    def face(
+    def face_legacy(
         self,
         shapes: ShapeSourceOrIterable,
         tool: "Toolbit",
@@ -284,7 +285,7 @@ class Job:
         coolant: Literal["None", "Flood", "Mist"] = "None",
     ) -> "Job":
         """
-        2.5D face operation to clear material from a surface.
+        Legacy 2.5D face operation (MillFace). Prefer face() which uses MillFacing.
 
         See https://wiki.freecad.org/Path_MillFace for usage notes.
 
@@ -298,16 +299,73 @@ class Job:
         :return:
         """
 
-        op = FaceOp(
+        op = FaceLegacyOp(
             finish_depth=finish_depth,
             boundary=boundary,
             clear_edges=clear_edges,
             exclude_raised=exclude_raised,
             pattern=pattern,
             tool=tool,
-            compound_data=shape_source_to_compound(
-                shapes,
-            ),
+            compound_data=shape_source_to_compound(shapes),
+            clearance_height=clearance_height,
+            final_depth=final_depth,
+            safe_height=safe_height,
+            start_depth=start_depth,
+            step_down=step_down,
+            coolant=coolant,
+        )
+        return self._add_op(op)
+
+    def face(
+        self,
+        shapes: ShapeSourceOrIterable,
+        tool: "Toolbit",
+        *,
+        cut_mode: Literal["climb", "conventional"] = None,
+        pattern: Literal["zigzag", "bidirectional", "directional", "spiral"] = None,
+        angle: float = None,
+        step_over: float = None,
+        axial_stock_to_leave: float = None,
+        pass_extension: float = None,
+        stock_extension: float = None,
+        reverse: bool = None,
+        # OP depth
+        clearance_height=None,
+        final_depth=None,
+        safe_height=None,
+        start_depth=None,
+        step_down=None,
+        coolant: Literal["None", "Flood", "Mist"] = "None",
+    ) -> "Job":
+        """
+        2.5D face operation to clear material from a surface (MillFacing).
+
+        See https://wiki.freecad.org/CAM_MillFacing for usage notes.
+
+        :param shapes: Shape(s) to perform this OP on
+        :param tool: Tool to use in this OP
+        :param cut_mode: "climb" or "conventional"
+        :param pattern: "zigzag", "bidirectional", "directional", or "spiral"
+        :param angle: Angle for directional patterns
+        :param step_over: Stepover percentage of tool diameter
+        :param axial_stock_to_leave: Stock to leave in Z
+        :param pass_extension: Distance to extend cuts beyond boundary
+        :param stock_extension: Extends boundary in both directions
+        :param reverse: Reverse the cutting direction
+        :return:
+        """
+
+        op = FaceOp(
+            cut_mode=cut_mode,
+            pattern=pattern,
+            angle=angle,
+            step_over=step_over,
+            axial_stock_to_leave=axial_stock_to_leave,
+            pass_extension=pass_extension,
+            stock_extension=stock_extension,
+            reverse=reverse,
+            tool=tool,
+            compound_data=shape_source_to_compound(shapes),
             clearance_height=clearance_height,
             final_depth=final_depth,
             safe_height=safe_height,

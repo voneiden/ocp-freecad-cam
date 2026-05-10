@@ -30,6 +30,7 @@ from Path.Op import (
     Engrave,
     Helix,
     MillFace,
+    MillFacing,
     PocketShape,
     Profile,
     Surface,
@@ -365,7 +366,7 @@ class ProfileOp(Op):
         )
 
 
-class FaceOp(Op):
+class FaceLegacyOp(Op):
     fc_module = MillFace
     param_mapping = {
         "finish_depth": AutoUnitKey("FinishDepth"),
@@ -381,13 +382,13 @@ class FaceOp(Op):
         "clear_edges": "ClearEdges",
         "exclude_raised": "ExcludeRaisedAreas",
         "pattern": (
-            "OffsetPattern",
+            "ClearingPattern",
             {
                 "zigzag": "ZigZag",
                 "offset": "Offset",
                 "zigzag_offset": "ZigZagOffset",
                 "line": "Line",
-                "grid": "Grid,",
+                "grid": "Grid",
             },
         ),
     }
@@ -410,6 +411,54 @@ class FaceOp(Op):
             clear_edges=clear_edges,
             exclude_raised=exclude_raised,
             pattern=pattern,
+        )
+
+
+class FaceOp(Op):
+    fc_module = MillFacing
+    param_mapping = {
+        "cut_mode": ("CutMode", {"climb": "Climb", "conventional": "Conventional"}),
+        "pattern": (
+            "ClearingPattern",
+            {
+                "zigzag": "ZigZag",
+                "bidirectional": "Bidirectional",
+                "directional": "Directional",
+                "spiral": "Spiral",
+            },
+        ),
+        "angle": AutoUnitKey("Angle", mode="angle"),
+        "step_over": "StepOver",
+        "axial_stock_to_leave": AutoUnitKey("AxialStockToLeave"),
+        "pass_extension": AutoUnitKey("PassExtension"),
+        "stock_extension": AutoUnitKey("StockExtension"),
+        "reverse": "Reverse",
+    }
+
+    def __init__(
+        self,
+        *args,
+        cut_mode: Literal["climb", "conventional"] = None,
+        pattern: Literal["zigzag", "bidirectional", "directional", "spiral"] = None,
+        angle: float = None,
+        step_over: float = None,
+        axial_stock_to_leave: float = None,
+        pass_extension: float = None,
+        stock_extension: float = None,
+        reverse: bool = None,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.params = map_params(
+            self.param_mapping,
+            cut_mode=cut_mode,
+            pattern=pattern,
+            angle=angle,
+            step_over=step_over,
+            axial_stock_to_leave=axial_stock_to_leave,
+            pass_extension=pass_extension,
+            stock_extension=stock_extension,
+            reverse=reverse,
         )
 
 
