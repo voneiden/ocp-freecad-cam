@@ -473,7 +473,7 @@ class PocketOp(Op):
                 "offset": "Offset",
                 "zigzag_offset": "ZigZagOffset",
                 "line": "Line",
-                "grid": "Grid,",
+                "grid": "Grid",
             },
         ),
         "cut_mode": ("CutMode", {"climb": "Climb", "conventional": "Conventional"}),
