@@ -416,7 +416,7 @@ class Job:
         start_depth=None,
         step_down=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
-    ):
+    ) -> "Job":
         """
         Drilling OP works at least on circular edges and cylindrical
         faces.
@@ -471,7 +471,7 @@ class Job:
         start_depth=None,
         step_down=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
-    ):
+    ) -> "Job":
         """
         Perform a helix plunge.
 
@@ -528,7 +528,7 @@ class Job:
         start_depth=None,
         step_down=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
-    ):
+    ) -> "Job":
         """
         Deburring operation, typically using a chamfer tool.
 
@@ -581,7 +581,7 @@ class Job:
         start_depth=None,
         step_down=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
-    ):
+    ) -> "Job":
         """
         Engraving OP follows edges.
 
@@ -624,7 +624,7 @@ class Job:
         start_depth=None,
         step_down=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
-    ):
+    ) -> "Job":
         """
         V-Carve based on voronoi diagrams.
 
@@ -700,7 +700,7 @@ class Job:
         start_depth=None,
         step_down=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
-    ):
+    ) -> "Job":
         """
         3D surface op that mills the part using a XY scan pattern
         and a drop-down algorithm.
@@ -807,7 +807,7 @@ class Job:
         start_depth=None,
         step_down=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
-    ):
+    ) -> "Job":
         """
         Similar to the Surface OP, but performs the operation using a push
         cutter in the XY plane. Used for milling features on the XY-plane.
@@ -880,7 +880,7 @@ class Job:
         start_depth=None,
         step_down=None,
         coolant: Literal["None", "Flood", "Mist"] = "None",
-    ):
+    ) -> "Job":
         """
         Adaptive op generates a tool path to maintain constant cutter
         engagement.
