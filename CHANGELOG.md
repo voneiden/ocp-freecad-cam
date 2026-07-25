@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/voneiden/ocp-freecad-cam/compare/v2.0.1...v2.0.2) (2026-07-25)
+
+
+### Bug Fixes
+
+* Add missing return types for some operations ([4c9aec4](https://github.com/voneiden/ocp-freecad-cam/commit/4c9aec463896fbd705264f79fa697e3fc133700e))
+
 ## [2.0.1](https://github.com/voneiden/ocp-freecad-cam/compare/v2.0.0...v2.0.1) (2026-07-25)
 
 
