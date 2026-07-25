@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/voneiden/ocp-freecad-cam/compare/v2.0.0...v2.0.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* Reset tool controllers in _build ([baff6c8](https://github.com/voneiden/ocp-freecad-cam/commit/baff6c8c06b149762405a3d17da1257615e90280))
+
 ## [2.0.0](https://github.com/voneiden/ocp-freecad-cam/compare/v1.1.0...v2.0.0) (2026-05-10)
 
 
