@@ -162,6 +162,12 @@ class JobImpl:
         if self.post_processor:
             fc_job.PostProcessor = self.post_processor
 
+        # Reset tool controllers so each build creates fresh ones bound to this job.
+        # This handles the case where the same Toolbit instance is shared across
+        # multiple jobs.
+        for op in {id(op.tool): op for op in self.ops}.values():
+            op.tool._tool_controller = None
+
         for op in self.ops:
             op.execute(self)
 
