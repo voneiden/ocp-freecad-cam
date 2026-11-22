@@ -4,7 +4,6 @@ from collections import defaultdict
 from itertools import pairwise
 from typing import TYPE_CHECKING, Callable, Optional, Union
 
-from cadquery.units import DEG2RAD
 from OCP.AIS import AIS_Circle, AIS_Line, AIS_MultipleConnectedInteractive, AIS_Shape
 from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge
 from OCP.GC import GC_MakeArcOfCircle
@@ -272,7 +271,7 @@ def make_helix(
     else:
         geom_surf = Geom_ConicalSurface(
             gp_Ax3(center, dir),
-            angle * DEG2RAD,
+            math.radians(angle),
             radius,
         )
 
