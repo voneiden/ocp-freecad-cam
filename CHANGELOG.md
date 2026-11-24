@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.3](https://github.com/voneiden/ocp-freecad-cam/compare/v2.0.2...v2.0.3) (2026-11-24)
+
+
+### Bug Fixes
+
+* Handle GCE2d deprecation with a GC equivalent ([913a578](https://github.com/voneiden/ocp-freecad-cam/commit/913a5785db70197fcf24cc546d8a8f69bdbc0d47)), closes [#62](https://github.com/voneiden/ocp-freecad-cam/issues/62)
+* **visualizer:** Replace cadquery DEG2RAD import with math.radians ([6c4627c](https://github.com/voneiden/ocp-freecad-cam/commit/6c4627ce470badae4fdee210b27457da35021b46))
+
 ## [2.0.2](https://github.com/voneiden/ocp-freecad-cam/compare/v2.0.1...v2.0.2) (2026-07-25)
 
 
