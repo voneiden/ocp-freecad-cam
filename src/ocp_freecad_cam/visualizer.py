@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Callable, Optional, Union
 from OCP.AIS import AIS_Circle, AIS_Line, AIS_MultipleConnectedInteractive, AIS_Shape
 from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge
 from OCP.GC import GC_MakeArcOfCircle
-from OCP.GCE2d import GCE2d_MakeSegment
 from OCP.Geom import (
     Geom_CartesianPoint,
     Geom_Circle,
@@ -22,6 +21,12 @@ from OCP.TopoDS import TopoDS_Builder, TopoDS_Compound, TopoDS_Edge
 from Path.Post.Processor import PostProcessorFactory
 
 from ocp_freecad_cam.api_util import transform_shape
+
+try:
+    # Deprecated OCCT 8.0, not available in OCP 8.0
+    from OCP.GCE2d import GCE2d_MakeSegment as GC_MakeSegment2d
+except ImportError:
+    from OCP.GC import GC_MakeSegment2d
 
 if TYPE_CHECKING:
     pass
@@ -289,7 +294,7 @@ def make_helix(
     n_turns = height / pitch
     u_start = geom_line.Value(0.0)
     u_stop = geom_line.Value(n_turns * math.sqrt((2 * math.pi) ** 2 + pitch**2))
-    geom_seg = GCE2d_MakeSegment(u_start, u_stop).Value()
+    geom_seg = GC_MakeSegment2d(u_start, u_stop).Value()
 
     e = BRepBuilderAPI_MakeEdge(geom_seg, geom_surf).Edge()
     return e
