@@ -168,8 +168,8 @@ jobs:
         run: |
           source freecad/venv/bin/activate
           python -m pip install --upgrade pip
-          pip install --ignore-installed cadquery build123d
-          pip install --ignore-installed -r requirements-dev.txt
+          pip install -r requirements-dev.txt
+          pip install cadquery build123d
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
