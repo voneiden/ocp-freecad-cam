@@ -137,8 +137,13 @@ jobs:
         run: |
           mkdir freecad
           cd freecad
-          $tagArgs = if ($env:RELEASE -ne "latest") { @($env:RELEASE) } else { @() }
-          $assets = (gh release view @tagArgs --repo FreeCAD/FreeCAD --json assets | ConvertFrom-Json).assets
+          if ($env:RELEASE -eq "latest") {
+            $releaseJson = gh release view --repo FreeCAD/FreeCAD --json assets
+          } else {
+            $releaseJson = gh release view $env:RELEASE --repo FreeCAD/FreeCAD --json assets
+          }
+          if ($LASTEXITCODE -ne 0) { throw "gh release view failed with exit code $LASTEXITCODE" }
+          $assets = ($releaseJson | ConvertFrom-Json).assets
           $urlPath = ($assets | Where-Object { $_.name -like "*Windows-x86_64*" -and $_.name -like "*$env:PYPATTERN*" -and $_.name.EndsWith(".7z") } | Select-Object -First 1).url
           if (-not $urlPath) { throw "Did not find FreeCAD asset matching Windows-x86_64, $env:PYPATTERN, .7z" }
           Invoke-WebRequest -Uri $urlPath -OutFile "freecad.7z"
