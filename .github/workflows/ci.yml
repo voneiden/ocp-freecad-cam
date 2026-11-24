@@ -43,6 +43,7 @@ jobs:
       uses: pre-commit/action@v3.0.1
 
   build:
+    name: ${{ matrix.os }} (${{ matrix.ocp }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -50,7 +51,12 @@ jobs:
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
         release: ["1.1.4"]
         python: [ "3.11" ]
-        # exclude:
+        ocp: ["standard", "novtk"]
+        exclude:
+          - os: "windows-latest"
+            ocp: "novtk"
+          - os: "macos-latest"
+            ocp: "novtk"
         include:
         #   - python: "3.11"
         #     release: "latest"
@@ -183,6 +189,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
           pip install cadquery build123d
+
+      - name: Install cadquery-ocp-novtk
+        if: matrix.ocp == 'novtk'
+        run: |
+          source freecad/venv/bin/activate
+          pip uninstall -y cadquery-ocp
+          pip install cadquery cadquery-ocp-novtk
 
       - name: Check ruff format
         if: matrix.primary
